@@ -205,3 +205,78 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# MLOps specific files
+# MLFlow
+mlruns/
+mlartifacts/
+.mlflow/
+
+# Prefect
+.prefect/
+flows/__pycache__/
+
+# Model artifacts
+models/
+artifacts/
+checkpoints/
+
+# Data files (large datasets)
+data/raw/
+data/processed/
+*.parquet
+*.h5
+*.hdf5
+
+# Evidently reports
+evidently_reports/
+monitoring_reports/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+terraform.tfvars.json
+
+# Local environment
+.env.local
+.env.development
+.env.production
+
+# Nomad
+nomad.d/
+nomad_data/
+
+# LocalStack
+.localstack/
+localstack_data/
+
+# Docker
+docker_data/
+
+# IDE specific
+.vscode/settings.json
+.idea/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Streamlit
+.streamlit/secrets.toml
+
+quarantine/
