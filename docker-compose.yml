@@ -33,18 +33,18 @@ services:
     ports:
       - "${MLFLOW_PORT:-5000}:5000"
     environment:
-      - MLFLOW_BACKEND_STORE_URI=postgresql://mlops_user:mlops_password@postgres:5432/mlops
+      - MLFLOW_BACKEND_STORE_URI=${DATABASE_URL}
       - MLFLOW_DEFAULT_ARTIFACT_ROOT=s3://mlflow-artifacts/
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - MLFLOW_S3_ENDPOINT_URL=http://localstack:${LOCALSTACK_PORT:-4566}
+      - MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}
       - AWS_DEFAULT_REGION=us-east-1
     command: >
-      mlflow server 
-      --backend-store-uri postgresql://mlops_user:mlops_password@postgres:5432/mlops
+      /bin/sh -c "pip install psycopg2-binary boto3 && mlflow server
+      --backend-store-uri ${DATABASE_URL}
       --default-artifact-root s3://mlflow-artifacts/
       --host 0.0.0.0
-      --port 5000
+      --port 5000"
     depends_on:
       - postgres
       - localstack
@@ -80,10 +80,10 @@ services:
       - DATA_DIR=/tmp/localstack/data
       - DOCKER_HOST=unix:///var/run/docker.sock
       - AWS_DEFAULT_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     volumes:
-      - ./app_data/localstack:/tmp/localstack
+      - ./app_data/localstack:/tmp
       - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
       - mlops-network
@@ -95,9 +95,9 @@ services:
     depends_on:
       - localstack
     environment:
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
       - AWS_ENDPOINT_URL=http://localstack:${LOCALSTACK_PORT:-4566}
     entrypoint: >
       /bin/sh -c "
