@@ -1,0 +1,8 @@
+# Exclude unnecessary files from Docker build context
+README.md
+.git
+*.md
+
+# Keep only essential files for Structurizr
+!structurizr/
+!Dockerfile
