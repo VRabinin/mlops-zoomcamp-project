@@ -23,29 +23,29 @@ setup: ## Set up development environment
 	@echo "✅ Virtual environment created at .venv/"
 	@echo "To activate: source .venv/bin/activate"
 
-install: ## Install Python dependencies (requires activated virtual environment)
-	@echo "Installing dependencies..."
-	@if [ -z "$$VIRTUAL_ENV" ]; then \
-		echo "⚠️  Warning: No virtual environment detected."; \
-		echo "   Please activate your virtual environment first: source .venv/bin/activate"; \
-		echo "   Or use 'make dev-setup' for complete setup."; \
-		exit 1; \
-	fi
-	pip install --upgrade pip
-	pip install -r requirements.txt
-	@echo "Dependencies installed successfully!"
+#install: ## Install Python dependencies (requires activated virtual environment)
+#	@echo "Installing dependencies..."
+#	@if [ -z "$$VIRTUAL_ENV" ]; then \
+#		echo "⚠️  Warning: No virtual environment detected."; \
+#		echo "   Please activate your virtual environment first: source .venv/bin/activate"; \
+#		echo "   Or use 'make dev-setup' for complete setup."; \
+#		exit 1; \
+#	fi
+#	pip install --upgrade pip
+#	pip install -r requirements.txt
+#	@echo "Dependencies installed successfully!"
 
-install-dev: ## Install development dependencies (requires activated virtual environment)
-	@echo "Installing development dependencies..."
-	@if [ -z "$$VIRTUAL_ENV" ]; then \
-		echo "⚠️  Warning: No virtual environment detected."; \
-		echo "   Please activate your virtual environment first: source .venv/bin/activate"; \
-		exit 1; \
-	fi
-	pip install --upgrade pip
-	pip install -r requirements.txt
-	pip install pytest pytest-cov black isort flake8 mypy
-	@echo "Development dependencies installed successfully!"
+#install-dev: ## Install development dependencies (requires activated virtual environment)
+#	@echo "Installing development dependencies..."
+#	@if [ -z "$$VIRTUAL_ENV" ]; then \
+#		echo "⚠️  Warning: No virtual environment detected."; \
+#		echo "   Please activate your virtual environment first: source .venv/bin/activate"; \
+#		exit 1; \
+#	fi
+#	pip install --upgrade pip
+#	pip install -r requirements.txt
+#	pip install pytest pytest-cov black isort flake8 mypy
+#	@echo "Development dependencies installed successfully!"
 
 install-venv: ## Install dependencies directly in .venv (no activation required)
 	@echo "Installing dependencies in virtual environment..."
@@ -55,6 +55,7 @@ install-venv: ## Install dependencies directly in .venv (no activation required)
 	fi
 	.venv/bin/pip install --upgrade pip
 	.venv/bin/pip install -r requirements.txt
+	.venv/bin/pip install pytest pytest-cov black isort flake8 mypy
 	@echo "Dependencies installed successfully in .venv!"
 
 # Environment Management
@@ -72,6 +73,10 @@ env-file: ## Create environment file from template
 	else \
 		echo ".env file already exists."; \
 	fi
+
+
+# =================. Validated till here ================
+
 
 # Data Pipeline
 data-download: ## Download CRM dataset from Kaggle
@@ -186,13 +191,17 @@ docker-build: ## Build Docker images
 	@echo "Building Docker images..."
 	docker build -t mlops-platform:latest .
 
-docker-run: ## Run application in Docker
+docker-start: ## Run application in Docker
 	@echo "Running application in Docker..."
 	docker compose up -d
 
 docker-stop: ## Stop Docker containers
 	@echo "Stopping Docker containers..."
 	docker compose down
+
+docker-status: ## Check application status in Docker
+	@echo "Checking application status in Docker..."
+	docker compose ps
 
 # Infrastructure
 infra-plan: ## Plan Terraform infrastructure

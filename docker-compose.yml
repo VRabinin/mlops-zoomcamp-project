@@ -1,0 +1,158 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: mlops-postgres
+    environment:
+      POSTGRES_DB: mlops
+      POSTGRES_USER: mlops_user
+      POSTGRES_PASSWORD: mlops_password
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mlops-network
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: mlops-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mlops-network
+
+  # MLFlow Tracking Server
+  mlflow:
+    image: mlflow/mlflow:latest
+    container_name: mlops-mlflow
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlops_user:mlops_password@postgres:5432/mlops
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=s3://mlflow-artifacts/
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - MLFLOW_S3_ENDPOINT_URL=http://localstack:${LOCALSTACK_PORT:-4566}
+      - AWS_DEFAULT_REGION=us-east-1
+    command: >
+      mlflow server 
+      --backend-store-uri postgresql://mlops_user:mlops_password@postgres:5432/mlops
+      --default-artifact-root s3://mlflow-artifacts/
+      --host 0.0.0.0
+      --port 5000
+    depends_on:
+      - postgres
+      - localstack
+    networks:
+      - mlops-network
+
+  # Prefect Server
+  prefect-server:
+    image: prefecthq/prefect:2-latest
+    container_name: mlops-prefect-server
+    ports:
+      - "${PREFECT_PORT:-4200}:4200"
+    environment:
+      - PREFECT_UI_URL=http://localhost:${PREFECT_PORT:-4200}/api
+      - PREFECT_API_URL=http://localhost:${PREFECT_PORT:-4200}/api
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+    command: prefect server start --host 0.0.0.0
+    volumes:
+      - prefect_data:/root/.prefect
+    networks:
+      - mlops-network
+
+  # LocalStack for AWS services emulation
+  localstack:
+    image: localstack/localstack:latest
+    container_name: mlops-localstack
+    ports:
+      - "${LOCALSTACK_PORT:-4566}:4566"
+      - "${LOCALSTACK_PORT_RANGE_START:-4510}-${LOCALSTACK_PORT_RANGE_END:-4559}:4510-4559"
+    environment:
+      - DEBUG=1
+      - SERVICES=s3,secretsmanager,ssm,cloudformation,iam,lambda
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - localstack_data:/tmp/localstack
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - mlops-network
+
+  # Initialize LocalStack S3 buckets
+  localstack-setup:
+    image: amazon/aws-cli:latest
+    container_name: mlops-localstack-setup
+    depends_on:
+      - localstack
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:${LOCALSTACK_PORT:-4566}
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for LocalStack to be ready...';
+      while ! aws --endpoint-url=http://localstack:${LOCALSTACK_PORT:-4566} s3 ls > /dev/null 2>&1; do
+        sleep 2;
+      done;
+      echo 'Creating S3 buckets...';
+      aws --endpoint-url=http://localstack:${LOCALSTACK_PORT:-4566} s3 mb s3://mlflow-artifacts || true;
+      aws --endpoint-url=http://localstack:${LOCALSTACK_PORT:-4566} s3 mb s3://data-lake || true;
+      aws --endpoint-url=http://localstack:${LOCALSTACK_PORT:-4566} s3 mb s3://model-artifacts || true;
+      echo 'S3 buckets created successfully';
+      exit 0;
+      "
+    networks:
+      - mlops-network
+
+  # Grafana for monitoring dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mlops-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - mlops-network
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mlops-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - mlops-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  prefect_data:
+  localstack_data:
+  grafana_data:
+  prometheus_data:
+
+networks:
+  mlops-network:
+    driver: bridge

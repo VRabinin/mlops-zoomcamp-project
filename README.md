@@ -34,9 +34,9 @@ The platform follows a microservices-based architecture with the following key c
 ```
 ├── .github/workflows/      # CI/CD pipelines
 ├── architecture/           # Solution architecture documentation
-│   ├── workspace.dsl      # C4 model in Structurizr DSL
+│   ├── structurizr/       # Structurizr DSL Directory
+│   │   └── workspace.dsl  # C4 model in Structurizr DSL
 │   ├── README.md          # Architecture documentation
-│   ├── Makefile           # Architecture management commands
 │   └── docker-compose.yml # Structurizr local setup
 ├── config/                # Configuration files
 │   └── development.yaml   # Development environment config
