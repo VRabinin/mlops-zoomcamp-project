@@ -1,3 +1,4 @@
+name: mlops-zoomcamp-project
 services:
   # PostgreSQL Database
   postgres:
@@ -10,7 +11,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./app_data/postgres:/var/lib/postgresql/data
     networks:
       - mlops-network
 
@@ -27,7 +28,7 @@ services:
 
   # MLFlow Tracking Server
   mlflow:
-    image: mlflow/mlflow:latest
+    image: ghcr.io/mlflow/mlflow:v2.22.0
     container_name: mlops-mlflow
     ports:
       - "${MLFLOW_PORT:-5000}:5000"
@@ -82,7 +83,7 @@ services:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
     volumes:
-      - localstack_data:/tmp/localstack
+      - ./app_data/localstack:/tmp/localstack
       - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
       - mlops-network
@@ -114,44 +115,10 @@ services:
     networks:
       - mlops-network
 
-  # Grafana for monitoring dashboards
-  grafana:
-    image: grafana/grafana:latest
-    container_name: mlops-grafana
-    ports:
-      - "${GRAFANA_PORT:-3000}:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-    networks:
-      - mlops-network
-
-  # Prometheus for metrics collection
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: mlops-prometheus
-    ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    networks:
-      - mlops-network
-
 volumes:
-  postgres_data:
   redis_data:
   prefect_data:
   localstack_data:
-  grafana_data:
-  prometheus_data:
 
 networks:
   mlops-network:

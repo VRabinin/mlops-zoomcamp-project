@@ -133,15 +133,6 @@ prefect-deploy: ## Deploy Prefect flows
 	@echo "Deploying Prefect flows..."
 	python -m src.pipelines.deploy_flows
 
-# Monitoring
-monitor-setup: ## Set up monitoring infrastructure
-	@echo "Setting up monitoring..."
-	python -m src.monitoring.setup
-
-monitor-reports: ## Generate monitoring reports
-	@echo "Generating monitoring reports..."
-	python -m src.monitoring.generate_reports
-
 # Code Quality
 lint: ## Run linting
 	@echo "Running linting..."
@@ -177,7 +168,7 @@ docs-serve: ## Serve documentation locally
 	mkdocs serve
 
 # Architecture
-architecture: ## View architecture diagrams
+architecture-start: ## View architecture diagrams
 	@echo "Starting architecture viewer..."
 	cd architecture && docker compose up -d structurizr
 	@echo "Architecture available at: http://localhost:$${STRUCTURIZR_PORT:-8080}"
@@ -191,15 +182,15 @@ docker-build: ## Build Docker images
 	@echo "Building Docker images..."
 	docker build -t mlops-platform:latest .
 
-docker-start: ## Run application in Docker
+application-start: ## Run application in Docker
 	@echo "Running application in Docker..."
 	docker compose up -d
 
-docker-stop: ## Stop Docker containers
+application-stop: ## Stop Docker containers
 	@echo "Stopping Docker containers..."
 	docker compose down
 
-docker-status: ## Check application status in Docker
+application-status: ## Check application status in Docker
 	@echo "Checking application status in Docker..."
 	docker compose ps
 

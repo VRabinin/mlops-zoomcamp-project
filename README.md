@@ -116,13 +116,13 @@ chmod 600 ~/.kaggle/kaggle.json
 
 ```bash
 # Start all local infrastructure (PostgreSQL, MLFlow, Redis, etc.)
-docker compose up -d
+make application-start
 
 # Verify services are running
-docker compose ps
+make application-status
 
-# Check service status
-make status
+# Check local environment and directories
+make application-status
 ```
 
 ### 4. Run Data Pipeline
@@ -159,7 +159,7 @@ python notebooks/01_exploratory_data_analysis.py
 
 ```bash
 # Start architecture viewer
-make architecture
+make architecture-start
 # Open http://localhost:8080 to view C4 diagrams (port configurable via STRUCTURIZR_PORT)
 
 # Stop the architecture viewer 
