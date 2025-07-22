@@ -34,8 +34,8 @@ This is a **CRM Sales Opportunities MLOps Platform** - an end-to-end machine lea
     │   └── hyperparameter_tuning/  # HPO workflows
     ├── pipelines/             # Prefect workflow definitions
     │   ├── run_crm_ingestion.py     # CRM data pipeline flow
-    │   ├── run_prefect_deployment.py # Flow deployment scripts
-    │   └── deploy_flows.py    # Batch flow deployment
+    │   ├── deploy_flows.py    # Batch flow deployment
+    │   └── deploy_crm_pipeline.py   # Flow deployment scripts
     ├── api/                   # FastAPI model serving
     ├── streamlit_app/         # Web interface
     └── config/                # Configuration management

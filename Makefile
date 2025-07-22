@@ -139,18 +139,6 @@ mlflow-server: ## Start MLFlow tracking server
 
 
 # Prefect
-prefect-server: ## Start Prefect server
-	@echo "Starting Prefect server..."
-	prefect server start --host 0.0.0.0 --port 4200
-
-prefect-agent: ## Start Prefect agent
-	@echo "Starting Prefect agent..."
-	prefect agent start -q default
-
-prefect-deploy: ## Deploy Prefect flows
-	@echo "Deploying Prefect flows..."
-	python -m src.pipelines.deploy_flows
-
 prefect-deploy-crm: ## Deploy CRM ingestion flow
 	@echo "Deploying CRM ingestion flow..."
 	@export PREFECT_API_URL=http://localhost:4200/api && \
@@ -161,6 +149,42 @@ prefect-run-crm: ## Run CRM ingestion flow directly (for testing)
 	@echo "Setting Prefect API URL..."
 	@export PREFECT_API_URL=http://localhost:4200/api && \
 	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_crm_pipeline.py
+
+prefect-deployments: ## List all Prefect deployments
+	@echo "Listing Prefect deployments..."
+	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment ls
+
+prefect-run-deployment: ## Run the CRM deployment manually
+	@echo "Running CRM deployment manually..."
+	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment run crm_data_ingestion_flow/crm-data-ingestion
+
+prefect-flows: ## List all flow runs
+	@echo "Listing Prefect flow runs..."
+	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect flow-run ls
+
+prefect-ui: ## Open Prefect UI in browser
+	@echo "Opening Prefect UI..."
+	@open http://localhost:4200
+
+prefect-help: ## Show all Prefect commands
+	@echo "=== Available Prefect Commands ==="
+	@echo "prefect-run-crm:      	Run CRM ingestion flow directly"	
+	@echo "prefect-deploy-crm:      Deploy CRM flow to server"
+	@echo "prefect-deployments:     List all deployments"
+	@echo "prefect-flows:           List recent flow runs"
+	@echo "prefect-run-deployment:  Run CRM deployment manually"
+	@echo "prefect-status-all:      Show comprehensive status"
+	@echo "prefect-ui:              Open Prefect UI in browser"
+	@echo "prefect-help:            Show this help message"
+
+prefect-status-all: ## Show comprehensive Prefect status
+	@echo "=== Prefect Status ==="
+	@echo "Server Health:"
+	@curl -s http://localhost:4200/api/health 2>/dev/null && echo " ✅ Server is running" || echo " ❌ Server is not responding"
+	@echo "\nDeployments:"
+	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment ls 2>/dev/null || echo "❌ Could not list deployments"
+	@echo "\nRecent Flow Runs:"
+	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect flow-run ls --limit 5 2>/dev/null || echo "❌ Could not list flow runs"
 
 # Code Quality
 lint: ## Run linting
