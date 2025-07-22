@@ -56,12 +56,12 @@ services:
     image: prefecthq/prefect:3-latest
     container_name: mlops-prefect-server
     ports:
-      - "${PREFECT_PORT:-4200}:4200"
+      - "${PREFECT_PORT:-4200}:${PREFECT_PORT:-4200}"
     environment:
       - PREFECT_UI_URL=http://localhost:${PREFECT_PORT:-4200}
       - PREFECT_API_URL=http://localhost:${PREFECT_PORT:-4200}/api
       - PREFECT_SERVER_API_HOST=0.0.0.0
-    command: prefect server start --host 0.0.0.0 --port 4200
+    command: prefect server start --host 0.0.0.0 --port ${PREFECT_PORT:-4200}
     volumes:
       - prefect_data:/root/.prefect
     networks:
@@ -111,6 +111,26 @@ services:
       aws --endpoint-url=http://localstack:${LOCALSTACK_PORT:-4566} s3 mb s3://model-artifacts || true;
       echo 'S3 buckets created successfully';
       exit 0;
+      "
+    networks:
+      - mlops-network
+
+  # Initialize Prefect work pool and start worker
+  prefect-setup:
+    image: prefecthq/prefect:3-latest
+    container_name: mlops-prefect-setup
+    depends_on:
+      - prefect-server
+    environment:
+      - PREFECT_API_URL=http://mlops-prefect-server:${PREFECT_PORT:-4200}/api
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for Prefect server to be ready...';
+      sleep 15;
+      echo 'Creating default work pool...';
+      prefect work-pool create default-agent-pool --type process || echo 'Work pool already exists';
+      echo 'Starting Prefect worker...';
+      prefect worker start --pool default-agent-pool;
       "
     networks:
       - mlops-network

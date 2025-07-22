@@ -168,8 +168,8 @@ prefect-ui: ## Open Prefect UI in browser
 
 prefect-help: ## Show all Prefect commands
 	@echo "=== Available Prefect Commands ==="
-	@echo "prefect-run-crm:      	Run CRM ingestion flow directly"	
 	@echo "prefect-deploy-crm:      Deploy CRM flow to server"
+	@echo "prefect-run-crm:         Run CRM ingestion flow directly"	
 	@echo "prefect-deployments:     List all deployments"
 	@echo "prefect-flows:           List recent flow runs"
 	@echo "prefect-run-deployment:  Run CRM deployment manually"
@@ -181,6 +181,8 @@ prefect-status-all: ## Show comprehensive Prefect status
 	@echo "=== Prefect Status ==="
 	@echo "Server Health:"
 	@curl -s http://localhost:4200/api/health 2>/dev/null && echo " ✅ Server is running" || echo " ❌ Server is not responding"
+	@echo "\nWork Pools:"
+	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect work-pool ls 2>/dev/null || echo "❌ Could not list work pools"
 	@echo "\nDeployments:"
 	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment ls 2>/dev/null || echo "❌ Could not list deployments"
 	@echo "\nRecent Flow Runs:"
@@ -259,7 +261,9 @@ dev-setup: setup install-venv create-dirs env-file ## Complete development setup
 	@echo "3. Start services: docker compose up -d"
 	@echo "4. Run data pipeline: make data-pipeline"
 
-dev-start: mlflow-server prefect-server prefect-agent ## Start development services
+dev-start: mlflow-server ## Start development services
+	@echo "Starting Prefect services..."
+	@docker compose up -d prefect-server prefect-setup
 
 dev-stop: ## Stop development services
 	@echo "Stopping development services..."
