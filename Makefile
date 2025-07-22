@@ -132,7 +132,7 @@ mlflow-server: ## Start MLFlow tracking server
 # Prefect
 prefect-server: ## Start Prefect server
 	@echo "Starting Prefect server..."
-	prefect server start
+	prefect server start --host 0.0.0.0 --port 4200
 
 prefect-agent: ## Start Prefect agent
 	@echo "Starting Prefect agent..."
@@ -144,10 +144,13 @@ prefect-deploy: ## Deploy Prefect flows
 
 prefect-deploy-crm: ## Deploy CRM ingestion flow
 	@echo "Deploying CRM ingestion flow..."
+	@export PREFECT_API_URL=http://localhost:4200/api && \
 	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_prefect_deployment.py
 
 prefect-run-crm: ## Run CRM ingestion flow directly (for testing)
 	@echo "Running CRM ingestion flow locally..."
+	@echo "Setting Prefect API URL..."
+	@export PREFECT_API_URL=http://localhost:4200/api && \
 	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_crm_ingestion.py
 
 prefect-status: ## Check status of Prefect and related services
@@ -218,6 +221,8 @@ application-start: ## Run application in Docker
 application-stop: ## Stop Docker containers
 	@echo "Stopping Docker containers..."
 	docker compose down
+
+application-restart: application-stop application-start ## Restart Docker containers
 
 application-status: ## Check application status in Docker
 	@echo "Checking application status in Docker..."

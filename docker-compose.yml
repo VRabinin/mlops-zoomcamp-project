@@ -53,15 +53,15 @@ services:
 
   # Prefect Server
   prefect-server:
-    image: prefecthq/prefect:2-latest
+    image: prefecthq/prefect:3-latest
     container_name: mlops-prefect-server
     ports:
       - "${PREFECT_PORT:-4200}:4200"
     environment:
-      - PREFECT_UI_URL=http://localhost:${PREFECT_PORT:-4200}/api
+      - PREFECT_UI_URL=http://localhost:${PREFECT_PORT:-4200}
       - PREFECT_API_URL=http://localhost:${PREFECT_PORT:-4200}/api
       - PREFECT_SERVER_API_HOST=0.0.0.0
-    command: prefect server start --host 0.0.0.0
+    command: prefect server start --host 0.0.0.0 --port 4200
     volumes:
       - prefect_data:/root/.prefect
     networks:

@@ -11,7 +11,7 @@ catboost>=1.2.0
 
 # MLOps tools
 mlflow>=2.7.0
-prefect>=2.14.0
+prefect>=3.0.0
 evidently>=0.4.0
 
 # Data validation

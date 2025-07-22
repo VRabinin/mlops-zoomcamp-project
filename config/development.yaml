@@ -16,7 +16,7 @@ mlflow:
 
 # Prefect configuration
 prefect:
-  api_url: "http://localhost:4200"
+  api_url: "http://localhost:4200/api"
   work_pool: "default-agent-pool"
   deployment_name: "crm-training-pipeline"
 
