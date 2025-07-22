@@ -1,0 +1,50 @@
+# Data configuration
+data:
+  raw_data_path: "data/raw"
+  processed_data_path: "data/processed"
+  feature_store_path: "data/features"
+  kaggle_dataset: "innocentmfa/crm-sales-opportunities"
+  train_test_split: 0.8
+  validation_split: 0.2
+
+# MLFlow configuration
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  experiment_name: "crm-sales-prediction"
+  artifact_location: "mlruns"
+  model_registry_name: "crm-sales-model"
+
+# Prefect configuration
+prefect:
+  api_url: "http://localhost:4200"
+  work_pool: "default-agent-pool"
+  deployment_name: "crm-training-pipeline"
+
+# Model configuration
+model:
+  target_column: "deal_stage"
+  test_size: 0.2
+  random_state: 42
+  cv_folds: 5
+  models_to_train:
+    - "random_forest"
+    - "gradient_boosting"
+    - "logistic_regression"
+    - "xgboost"
+
+# Monitoring configuration
+monitoring:
+  drift_threshold: 0.1
+  performance_threshold: 0.8
+  monitoring_frequency: "daily"
+  alert_recipients:
+    - "admin@mlops-platform.com"
+
+# Environment settings
+environment: "development"
+debug: true
+log_level: "INFO"
+
+# Infrastructure
+database_url: "postgresql://localhost:5432/mlops"
+redis_url: "redis://localhost:6379"
