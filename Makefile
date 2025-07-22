@@ -150,6 +150,14 @@ prefect-run-crm: ## Run CRM ingestion flow directly (for testing)
 	@echo "Running CRM ingestion flow locally..."
 	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_crm_ingestion.py
 
+prefect-status: ## Check status of Prefect and related services
+	@echo "Checking Prefect pipeline status..."
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/check_status.py
+
+prefect-test: ## Test Prefect flow setup
+	@echo "Testing Prefect flow setup..."
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/test_setup.py
+
 prefect-view-flows: ## View registered Prefect flows
 	@echo "Viewing registered Prefect flows..."
 	prefect deployment ls

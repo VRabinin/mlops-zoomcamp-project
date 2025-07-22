@@ -55,7 +55,7 @@ make data-pipeline
 ```
 
 **Tasks:**
-- [ ] Set up Kaggle API credentials
+- [x] Set up Kaggle API credentials
 - [ ] Run data ingestion pipeline
 - [ ] Examine actual dataset structure
 - [ ] Update data schema based on real data
