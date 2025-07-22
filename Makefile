@@ -64,6 +64,7 @@ create-dirs: ## Create necessary directories
 	mkdir -p data/raw data/processed data/features
 	mkdir -p models artifacts logs
 	mkdir -p reports #notebooks
+	mkdir -p app_data/postgres app_data/localstack
 	touch data/raw/.gitkeep data/processed/.gitkeep data/features/.gitkeep
 
 env-file: ## Create environment file from template
@@ -92,6 +93,10 @@ data-process: ## Process raw data into features
 	python -m src.data.preprocessing.process_data
 
 data-pipeline: data-download data-validate data-process ## Run complete data pipeline
+
+data-pipeline-flow: ## Run data pipeline as Prefect flow
+	@echo "Running data pipeline as Prefect flow..."
+	make prefect-run-crm
 
 # Model Training
 train: ## Train ML models
@@ -129,9 +134,25 @@ prefect-server: ## Start Prefect server
 	@echo "Starting Prefect server..."
 	prefect server start
 
+prefect-agent: ## Start Prefect agent
+	@echo "Starting Prefect agent..."
+	prefect agent start -q default
+
 prefect-deploy: ## Deploy Prefect flows
 	@echo "Deploying Prefect flows..."
 	python -m src.pipelines.deploy_flows
+
+prefect-deploy-crm: ## Deploy CRM ingestion flow
+	@echo "Deploying CRM ingestion flow..."
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_prefect_deployment.py
+
+prefect-run-crm: ## Run CRM ingestion flow directly (for testing)
+	@echo "Running CRM ingestion flow locally..."
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_crm_ingestion.py
+
+prefect-view-flows: ## View registered Prefect flows
+	@echo "Viewing registered Prefect flows..."
+	prefect deployment ls
 
 # Code Quality
 lint: ## Run linting
@@ -218,12 +239,13 @@ dev-setup: setup install-venv create-dirs env-file ## Complete development setup
 	@echo "3. Start services: docker compose up -d"
 	@echo "4. Run data pipeline: make data-pipeline"
 
-dev-start: mlflow-server prefect-server ## Start development services
+dev-start: mlflow-server prefect-server prefect-agent ## Start development services
 
 dev-stop: ## Stop development services
 	@echo "Stopping development services..."
 	pkill -f "mlflow"
 	pkill -f "prefect"
+	@echo "Development services stopped"
 
 # Cleaning
 clean: ## Clean temporary files
@@ -253,6 +275,8 @@ ci-build: clean install-venv test lint docker-build ## Complete CI build
 
 # Quick Commands
 quick-start: dev-setup data-pipeline train ## Quick start for new developers
+
+quick-flow: dev-setup prefect-deploy-crm prefect-agent ## Quick start with Prefect flows
 
 status: ## Show project status
 	@echo "MLOps Platform Status"

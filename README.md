@@ -135,6 +135,13 @@ make data-pipeline
 make data-download    # Download CRM dataset
 make data-validate    # Validate data quality
 make data-process     # Process raw data into features
+
+# Run data pipeline as a Prefect flow:
+make data-pipeline-flow  # Executes the Prefect flow locally
+
+# Deploy the flow to Prefect server:
+make prefect-deploy-crm  # Registers the flow with Prefect
+make prefect-agent       # Starts a Prefect agent to run the deployed flow
 ```
 
 ### 5. Explore and Train
@@ -189,6 +196,12 @@ make status
 # Run data pipeline
 make data-pipeline
 
+# Run data pipeline as Prefect flow
+make data-pipeline-flow
+
+# Deploy Prefect flows
+make prefect-deploy-crm
+
 # Run tests
 make test
 
@@ -201,7 +214,7 @@ make clean
 
 ### Full Development Cycle
 
-1. **Data Ingestion**: Extract CRM data from Kaggle with validation
+1. **Data Ingestion**: Extract CRM data from Kaggle with validation using Prefect flows
 2. **Feature Engineering**: Transform raw data into ML-ready features  
 3. **Model Training**: Train and evaluate ML models with Prefect orchestration
 4. **Experiment Tracking**: Log experiments and artifacts with MLFlow
@@ -215,8 +228,12 @@ make clean
 |---------|-------------|
 | `make help` | Show all available commands |
 | `make dev-setup` | Complete development environment setup |
-| `make dev-start` | Start MLFlow and Prefect servers |
+| `make dev-start` | Start MLFlow, Prefect server and agent |
 | `make data-pipeline` | Run complete data ingestion pipeline |
+| `make data-pipeline-flow` | Run data pipeline as Prefect flow |
+| `make prefect-deploy-crm` | Deploy CRM ingestion flow to Prefect |
+| `make prefect-run-crm` | Run CRM ingestion flow locally |
+| `make prefect-agent` | Start Prefect agent to run flows |
 | `make test` | Run test suite |
 | `make lint` | Run code quality checks |
 | `make architecture` | View architecture diagrams |
