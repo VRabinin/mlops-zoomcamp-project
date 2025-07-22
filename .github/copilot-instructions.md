@@ -164,3 +164,9 @@ make prefect-server             # http://localhost:4200
 - **Streamlit ↔ Model API**: Web interface for predictions (planned)
 
 When implementing new features, follow the established patterns in tests/, respect the Makefile workflow commands, and ensure compatibility with both local Docker and AWS production environments.
+
+## 📚 **Related Documentation**
+- **README.md**: Quick start, troubleshooting, and service URLs
+- **NEXT_STEPS.md**: Current sprint tasks and immediate action items  
+- **ROADMAP.md**: Long-term project phases and business context
+- **architecture/README.md**: Detailed technical architecture and data flows
