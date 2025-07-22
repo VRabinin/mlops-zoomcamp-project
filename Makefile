@@ -154,7 +154,7 @@ prefect-deploy: ## Deploy Prefect flows
 prefect-deploy-crm: ## Deploy CRM ingestion flow
 	@echo "Deploying CRM ingestion flow..."
 	@export PREFECT_API_URL=http://localhost:4200/api && \
-	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/deploy_crm_pipeline.py
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python src/pipelines/deploy_crm_pipeline.py
 
 prefect-run-crm: ## Run CRM ingestion flow directly (for testing)
 	@echo "Running CRM ingestion flow locally..."

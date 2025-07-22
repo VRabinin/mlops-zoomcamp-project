@@ -21,7 +21,7 @@ def create_deployment_yaml():
         'deployments': [
             {
                 'name': 'crm-data-ingestion',
-                'entrypoint': 'src/pipelines/run_crm_pipeline.py:crm_data_ingestion_flow',
+                'entrypoint': 'src/pipelines/run_crm_ingestion.py:crm_data_ingestion_flow',
                 'description': 'CRM sales opportunities data ingestion pipeline',
                 'tags': ['data', 'ingestion', 'crm', 'etl'],
                 'parameters': {},
@@ -46,63 +46,78 @@ def create_deployment_yaml():
     return deployment_file
 
 
+def deploy_with_cli():
+    """Deploy using Prefect CLI commands for Prefect 3.x."""
+    import subprocess
+    import sys
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Create the YAML file
+        yaml_file = create_deployment_yaml()
+        
+        # Deploy using prefect CLI
+        logger.info("🚀 Deploying using prefect deploy command...")
+        
+        cmd = [sys.executable, '-m', 'prefect', 'deploy', str(yaml_file)]
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd())
+        
+        if result.returncode == 0:
+            logger.info("✅ Deployment successful!")
+            logger.info(f"Output: {result.stdout}")
+            return True
+        else:
+            logger.error(f"❌ Deployment failed: {result.stderr}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ CLI deployment failed: {str(e)}")
+        return False
+
+
 def deploy_programmatically():
-    """Programmatic deployment for Prefect 3.x using flow.deploy() if available."""
+    """Alternative programmatic deployment for Prefect 3.x."""
     logger = logging.getLogger(__name__)
     
     try:
         # Import the flow
-        from src.pipelines.run_crm_pipeline import crm_data_ingestion_flow
+        from src.pipelines.run_crm_ingestion import crm_data_ingestion_flow
         
         # Get configuration
         config = get_config()
         
-        logger.info("🚀 Attempting programmatic deployment with flow.deploy()...")
+        logger.info("🚀 Attempting programmatic deployment...")
         
-        # Try using the flow's deploy method (Prefect 3.x pattern)
+        # Try using the flow's deploy method (if available in Prefect 3.x)
         if hasattr(crm_data_ingestion_flow, 'deploy'):
             deployment = crm_data_ingestion_flow.deploy(
                 name="crm-data-ingestion",
                 work_pool_name=config.prefect.work_pool,
                 description="CRM sales opportunities data ingestion pipeline",
                 tags=["data", "ingestion", "crm", "etl"],
-                cron="0 6 * * *"
+                cron="0 6 * * *",
+                timezone="UTC"
             )
-            logger.info(f"✅ Deployment successful: {deployment}")
-            return "crm-data-ingestion"
+            logger.info(f"✅ Programmatic deployment successful: {deployment}")
+            return True
         else:
-            logger.warning("flow.deploy() method not available")
-            return None
+            logger.warning("Flow.deploy method not available, trying alternative...")
+            
+            # Alternative: Use flow.serve for local serving
+            logger.info("Using flow.serve method for local deployment...")
+            crm_data_ingestion_flow.serve(
+                name="crm-data-ingestion",
+                description="CRM sales opportunities data ingestion pipeline",
+                tags=["data", "ingestion", "crm", "etl"],
+                cron="0 6 * * *",
+                timezone="UTC"
+            )
+            return True
             
     except Exception as e:
         logger.error(f"❌ Programmatic deployment failed: {str(e)}")
-        return None
-
-
-def deploy_with_serve():
-    """Alternative deployment using flow.serve() for local serving."""
-    logger = logging.getLogger(__name__)
-    
-    try:
-        # Import the flow
-        from src.pipelines.run_crm_pipeline import crm_data_ingestion_flow
-        
-        logger.info("🚀 Using flow.serve() for local deployment...")
-        
-        # Use serve method (starts a local server)
-        crm_data_ingestion_flow.serve(
-            name="crm-data-ingestion",
-            description="CRM sales opportunities data ingestion pipeline",
-            tags=["data", "ingestion", "crm", "etl"],
-            cron="0 6 * * *"
-        )
-        
-        logger.info("✅ Flow is now being served locally!")
-        return "crm-data-ingestion"
-        
-    except Exception as e:
-        logger.error(f"❌ Serve deployment failed: {str(e)}")
-        return None
+        return False
 
 
 def deploy_crm_ingestion_flow():
@@ -113,22 +128,65 @@ def deploy_crm_ingestion_flow():
     
     # Try deployment methods in order of preference
     methods = [
-        ("Programmatic deployment", deploy_programmatically),
-        ("Local serve deployment", deploy_with_serve)
+        ("CLI deployment", deploy_with_cli),
+        ("Programmatic deployment", deploy_programmatically)
     ]
     
     for method_name, method_func in methods:
         logger.info(f"Trying {method_name}...")
         try:
-            result = method_func()
-            if result:
+            if method_func():
                 logger.info(f"✅ {method_name} successful!")
-                return result
+                return "crm-data-ingestion"
         except Exception as e:
             logger.warning(f"⚠️ {method_name} failed: {str(e)}")
             continue
     
     raise Exception("All deployment methods failed")
+
+import logging
+from datetime import timedelta
+from prefect import flow, serve
+from prefect.client.schemas.schedules import CronSchedule
+
+from src.pipelines.run_crm_ingestion import crm_data_ingestion_flow
+from src.config.config import get_config
+
+
+def deploy_crm_ingestion_flow():
+    """Deploy CRM data ingestion flow to Prefect server using Prefect 3.x serve method."""
+    logger = logging.getLogger(__name__)
+    
+    # Get configuration
+    config = get_config()
+    
+    try:
+        # In Prefect 3.x, we use the serve method for deployment
+        logger.info("🚀 Deploying CRM ingestion flow using Prefect 3.x serve method...")
+        
+        # Serve the flow with schedule
+        deployment = crm_data_ingestion_flow.serve(
+            name="crm-data-ingestion",
+            description="CRM sales opportunities data ingestion pipeline",
+            tags=["data", "ingestion", "crm", "etl"],
+            parameters={},
+            # Schedule to run daily at 6 AM (using cron)
+            cron="0 6 * * *",
+            timezone="UTC",
+            # Start with schedule inactive for manual testing
+            paused=True
+        )
+        
+        logger.info(f"✅ CRM ingestion flow deployed successfully!")
+        logger.info(f"📋 Deployment name: crm-data-ingestion")
+        logger.info(f"� Schedule: Daily at 6 AM UTC (currently paused)")
+        logger.info(f"🚀 Flow is now served and ready to receive runs")
+        
+        return "crm-data-ingestion"
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to deploy flow: {str(e)}")
+        raise
 
 
 def main():
