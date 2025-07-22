@@ -5,7 +5,7 @@ from prefect import flow
 from prefect.deployments import Deployment
 from prefect.server.schemas.schedules import CronSchedule
 
-from src.pipelines.run_crm_ingestion import crm_data_ingestion_flow
+from src.pipelines.run_crm_pipeline import crm_data_ingestion_flow
 from src.config.config import get_config
 
 

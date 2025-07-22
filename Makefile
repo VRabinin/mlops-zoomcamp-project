@@ -75,11 +75,17 @@ env-file: ## Create environment file from template
 		echo ".env file already exists."; \
 	fi
 
+# Architecture
+architecture-start: ## View architecture diagrams
+	@echo "Starting architecture viewer..."
+	cd architecture && docker compose up -d structurizr
+	@echo "Architecture available at: http://localhost:$${STRUCTURIZR_PORT:-8080}"
 
-# =================. Validated till here ================
+architecture-stop: ## Stop architecture viewer
+	@echo "Stopping architecture viewer..."
+	cd architecture && docker compose down
 
-
-# Data Pipeline
+# Data Pipeline - direct start
 data-download: ## Download CRM dataset from Kaggle
 	@echo "Downloading CRM dataset..."
 	python -m src.data.ingestion.crm_ingestion
@@ -90,13 +96,13 @@ data-validate: ## Validate downloaded data
 
 data-process: ## Process raw data into features
 	@echo "Processing data..."
-	python -m src.data.preprocessing.process_data
+	python -m src.data.preprocessing.feature_engineering
 
 data-pipeline: data-download data-validate data-process ## Run complete data pipeline
 
-data-pipeline-flow: ## Run data pipeline as Prefect flow
-	@echo "Running data pipeline as Prefect flow..."
-	make prefect-run-crm
+
+# ================= Validated till here ================
+
 
 # Model Training
 train: ## Train ML models
@@ -129,6 +135,9 @@ mlflow-server: ## Start MLFlow tracking server
 	@echo "Starting MLFlow tracking server..."
 	mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns --host 0.0.0.0 --port 5000
 
+
+
+
 # Prefect
 prefect-server: ## Start Prefect server
 	@echo "Starting Prefect server..."
@@ -145,25 +154,13 @@ prefect-deploy: ## Deploy Prefect flows
 prefect-deploy-crm: ## Deploy CRM ingestion flow
 	@echo "Deploying CRM ingestion flow..."
 	@export PREFECT_API_URL=http://localhost:4200/api && \
-	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_prefect_deployment.py
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/deploy_crm_pipeline.py
 
 prefect-run-crm: ## Run CRM ingestion flow directly (for testing)
 	@echo "Running CRM ingestion flow locally..."
 	@echo "Setting Prefect API URL..."
 	@export PREFECT_API_URL=http://localhost:4200/api && \
-	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_crm_ingestion.py
-
-prefect-status: ## Check status of Prefect and related services
-	@echo "Checking Prefect pipeline status..."
-	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/check_status.py
-
-prefect-test: ## Test Prefect flow setup
-	@echo "Testing Prefect flow setup..."
-	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/test_setup.py
-
-prefect-view-flows: ## View registered Prefect flows
-	@echo "Viewing registered Prefect flows..."
-	prefect deployment ls
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_crm_pipeline.py
 
 # Code Quality
 lint: ## Run linting
@@ -199,21 +196,7 @@ docs-serve: ## Serve documentation locally
 	@echo "Serving documentation..."
 	mkdocs serve
 
-# Architecture
-architecture-start: ## View architecture diagrams
-	@echo "Starting architecture viewer..."
-	cd architecture && docker compose up -d structurizr
-	@echo "Architecture available at: http://localhost:$${STRUCTURIZR_PORT:-8080}"
-
-architecture-stop: ## Stop architecture viewer
-	@echo "Stopping architecture viewer..."
-	cd architecture && docker compose down
-
 # Docker
-docker-build: ## Build Docker images
-	@echo "Building Docker images..."
-	docker build -t mlops-platform:latest .
-
 application-start: ## Run application in Docker
 	@echo "Running application in Docker..."
 	docker compose up -d
