@@ -14,12 +14,17 @@
 - [x] **Development Environment**: Docker Compose for local services (PostgreSQL, Redis, MinIO)
 - [x] **CI/CD Foundation**: GitHub Actions workflows
 
-### ✅ **Recent Infrastructure Migration: LocalStack → MinIO**
+### ✅ **Recent Infrastructure Migration: LocalStack → MinIO + Intelligent Storage**
 - **Completed**: Full migration from LocalStack to MinIO for S3-compatible storage
 - **Benefits**: Lighter resource usage, better Docker integration, simpler configuration
 - **Storage**: MLflow artifacts, Prefect flows, and data lake all using MinIO S3
 - **Access**: MinIO Web UI available at http://localhost:9001 (minioadmin/minioadmin)
 - **Commands**: New Makefile commands for MinIO management (`make minio-*`)
+- **🆕 Intelligent Storage**: Automatic storage backend selection based on execution environment
+  - **Local Mode**: Direct execution uses `./data` directories
+  - **S3 Mode**: Prefect orchestration uses MinIO buckets automatically
+  - **Docker Mode**: Container execution uses S3 storage
+  - **Manual Override**: `USE_S3_STORAGE=true` forces S3 mode
 
 ### ✅ **Major Achievement: Prefect 3.x Pipeline Operational**
 - **Data Volume**: Successfully processing 8,800+ CRM records

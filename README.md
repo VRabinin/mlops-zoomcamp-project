@@ -163,7 +163,42 @@ make prefect-help          # Show all Prefect commands
 
 **✅ Current Status**: The CRM data pipeline is fully operational and processes 8,800+ CRM records with 23 engineered features. The pipeline achieves a 0.93 validation score and supports both standalone and Prefect-orchestrated execution.
 
-### 5. Explore and Train
+### 5. Storage Configuration
+
+**🗃️ Intelligent Storage Management**: The pipeline automatically selects the appropriate storage backend based on execution environment:
+
+```bash
+# 🔍 Storage Detection Logic:
+# ✅ Local Mode (Direct execution): Uses ./data directories
+# ✅ S3 Mode (Prefect orchestration): Uses MinIO buckets  
+# ✅ Docker Mode (Container execution): Uses S3/MinIO storage
+# ✅ Forced Mode: USE_S3_STORAGE=true environment variable
+
+# Test storage modes
+./test-storage-modes.sh
+
+# Local filesystem storage (development)
+python src/pipelines/run_crm_pipeline.py
+
+# S3/MinIO storage (orchestrated/production)
+make prefect-run-deployment  # Uses S3 automatically
+
+# Force S3 storage for testing
+USE_S3_STORAGE=true python src/pipelines/run_crm_pipeline.py
+```
+
+**📦 Storage Locations:**
+- **Local Mode**: `./data/raw/`, `./data/processed/`, `./data/features/`
+- **S3 Mode**: `s3://data-lake/raw/`, `s3://data-lake/processed/`, `s3://data-lake/features/`
+- **MinIO Web UI**: http://localhost:9001 (minioadmin/minioadmin)
+
+**🎯 Benefits:**
+- **Seamless Transition**: Same code works locally and in production
+- **Development Efficiency**: Local files for quick iteration
+- **Production Ready**: S3-compatible storage for scalability
+- **Container Compatible**: Automatic S3 mode in Docker environments
+
+### 6. Explore and Train
 
 ```bash
 # Start MLFlow UI (experiment tracking)
@@ -177,7 +212,7 @@ python notebooks/01_exploratory_data_analysis.py
 # make train
 ```
 
-### 6. View Architecture
+### 7. View Architecture
 
 ```bash
 # Start architecture viewer

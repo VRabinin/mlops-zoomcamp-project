@@ -152,7 +152,7 @@ def engineer_features_task(df: pd.DataFrame, config: Dict[str, Any]) -> Tuple[bo
 
 @task(name="save_processed_data", retries=1)
 def save_processed_data_task(df: pd.DataFrame, config: Dict[str, Any], suffix: str = "processed") -> Tuple[bool, str]:
-    """Save processed data to file.
+    """Save processed data to storage.
     
     Args:
         df: DataFrame to save.
@@ -166,16 +166,30 @@ def save_processed_data_task(df: pd.DataFrame, config: Dict[str, Any], suffix: s
     logger.info(f"Saving {suffix} data")
     
     try:
+        from src.utils.storage import StorageManager
+        storage = StorageManager(config)
+        
         if suffix == "processed":
-            output_path = Path(config['processed_data_path']) / "crm_data_processed.csv"
+            if storage.use_s3:
+                # Save to S3 with processed/ prefix
+                file_path = f"processed/crm_data_processed.csv"
+            else:
+                # Save to local processed directory
+                output_path = Path(config['processed_data_path']) / "crm_data_processed.csv"
+                file_path = str(output_path)
         else:
-            output_path = Path(config.get('feature_store_path', 'data/features')) / f"crm_{suffix}.csv"
+            if storage.use_s3:
+                # Save to S3 with features/ prefix
+                file_path = f"features/crm_{suffix}.csv"
+            else:
+                # Save to local features directory
+                output_path = Path(config.get('feature_store_path', 'data/features')) / f"crm_{suffix}.csv"
+                file_path = str(output_path)
         
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(output_path, index=False)
+        saved_path = storage.save_dataframe(df, file_path)
         
-        logger.info(f"💾 Data saved to: {output_path}")
-        return True, str(output_path)
+        logger.info(f"💾 Data saved to: {saved_path}")
+        return True, saved_path
         
     except Exception as e:
         logger.error(f"❌ Saving data failed: {str(e)}")
@@ -197,7 +211,14 @@ def crm_data_ingestion_flow():
         'kaggle_dataset': config.data.kaggle_dataset,
         'target_column': config.model.target_column,
         'test_size': config.model.test_size,
-        'random_state': config.model.random_state
+        'random_state': config.model.random_state,
+        'minio': {
+            'endpoint_url': config.storage.endpoint_url,
+            'access_key': config.storage.access_key,
+            'secret_key': config.storage.secret_key,
+            'region': config.storage.region,
+            'buckets': config.storage.buckets
+        }
     }
     
     # Task 1: Download data

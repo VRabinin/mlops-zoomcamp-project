@@ -163,13 +163,6 @@ prefect-deploy-s3: ## Deploy CRM flow with S3 storage (MinIO)
 from src.pipelines.deploy_crm_pipeline import deploy_with_s3_storage; \
 deploy_with_s3_storage()"
 
-prefect-deploy-simple-s3: ## Deploy CRM flow with simplified S3 setup
-	@echo "Deploying CRM flow with simplified S3 setup..."
-	@export PREFECT_API_URL=http://localhost:4200/api && \
-	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python -c "\
-from src.pipelines.deploy_crm_pipeline import deploy_with_simple_s3; \
-deploy_with_simple_s3()"
-
 prefect-run-crm: ## Run CRM ingestion flow directly (for testing)
 	@echo "Running CRM ingestion flow locally..."
 	@echo "Setting Prefect API URL..."
@@ -196,7 +189,6 @@ prefect-help: ## Show all Prefect commands
 	@echo "=== Available Prefect Commands ==="
 	@echo "prefect-deploy-crm:      Deploy CRM flow with S3 storage"
 	@echo "prefect-deploy-s3:       Deploy CRM flow with MinIO S3 storage"
-	@echo "prefect-deploy-simple-s3: Deploy CRM flow with simple S3"
 	@echo "prefect-run-crm:         Run CRM ingestion flow directly"	
 	@echo "prefect-deployments:     List all deployments"
 	@echo "prefect-flows:           List recent flow runs"

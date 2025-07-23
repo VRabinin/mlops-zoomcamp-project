@@ -37,17 +37,25 @@ Binary Target (Won vs Other): 4,238 vs 4,562 (balanced dataset)
 
 ### 3. Data Ingestion (`src/data/ingestion/crm_ingestion.py`)
 - ✅ Kaggle API integration with error handling
+- ✅ Intelligent storage management (local filesystem + S3/MinIO support)
+- ✅ Environment-based storage selection (Docker → S3, direct → local)
 - ✅ Data cleaning and missing value imputation
 - ✅ Encoding detection and data type conversion
 - ✅ Quality scoring and validation integration
 
-### 4. Data Validation (`src/data/validation/run_validation.py`)
+### 4. Storage Management (`src/utils/storage.py`)
+- ✅ Unified storage interface for local and S3/MinIO backends
+- ✅ Automatic environment detection (Docker vs direct execution)
+- ✅ MinIO integration with bucket management
+- ✅ Seamless local-to-production storage transition
+
+### 5. Data Validation (`src/data/validation/run_validation.py`)
 - ✅ Schema validation with column checking
 - ✅ Quality checks (missing values, duplicates, data types)
 - ✅ Business rules (deal stages, close values, date consistency)
 - ✅ Comprehensive reporting with pass/fail status
 
-### 5. Feature Engineering (`src/data/preprocessing/feature_engineering.py`)
+### 6. Feature Engineering (`src/data/preprocessing/feature_engineering.py`)
 - ✅ 23 new features created from 8 original columns
 - ✅ Date-based features (year, month, quarter, day of week, sales cycle duration)
 - ✅ Categorical encoding with label encoders
@@ -99,12 +107,14 @@ Binary Target (Won vs Other): 4,238 vs 4,562 (balanced dataset)
 
 ### MLOps Best Practices Implemented
 1. **Configuration Management**: YAML + environment variables
-2. **Data Validation**: Schema validation with quality scoring
-3. **Feature Engineering**: Systematic approach with encoding/scaling
-4. **Logging**: Comprehensive logging throughout pipeline
-5. **Error Handling**: Graceful handling of missing/invalid data
-6. **Reproducibility**: Fixed random seeds and deterministic processing
-7. **Modularity**: Separate modules for each pipeline stage
+2. **Intelligent Storage**: Seamless local/S3 backend selection
+3. **Data Validation**: Schema validation with quality scoring
+4. **Feature Engineering**: Systematic approach with encoding/scaling
+5. **Logging**: Comprehensive logging throughout pipeline
+6. **Error Handling**: Graceful handling of missing/invalid data
+7. **Reproducibility**: Fixed random seeds and deterministic processing
+8. **Modularity**: Separate modules for each pipeline stage
+9. **Environment Flexibility**: Works both locally and in containerized environments
 
 ### Performance Metrics
 - **Pipeline Speed**: ~2-3 seconds for complete feature engineering

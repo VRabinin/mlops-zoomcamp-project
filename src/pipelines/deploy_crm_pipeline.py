@@ -146,111 +146,24 @@ def deploy_with_s3_storage():
         return None
 
 
-def deploy_with_simple_s3():
-    """Simplified S3 deployment using prefect.yaml only."""
-    logger = logging.getLogger(__name__)
-    
-    try:
-        # Get configuration
-        config = get_config()
-        
-        logger.info("🚀 Creating simplified S3 deployment...")
-        
-        # Create prefect.yaml with S3 configuration for MinIO
-        yaml_config = {
-            'name': 'crm-mlops-project',
-            'prefect-version': '3.4.10',
-            
-            # S3 configuration for MinIO
-            'pull': [
-                {
-                    'prefect.deployments.steps.git_clone_project': {
-                        'repository': '.',  # Use current directory
-                        'branch': 'main'
-                    }
-                }
-            ],
-            
-            'deployments': [
-                {
-                    'name': 'crm-data-ingestion',
-                    'entrypoint': 'src/pipelines/run_crm_pipeline.py:crm_data_ingestion_flow',
-                    'description': 'CRM sales opportunities data ingestion pipeline (Simple S3)',
-                    'tags': ['data', 'ingestion', 'crm', 'etl', 's3-simple'],
-                    'parameters': {},
-                    'work_pool': {
-                        'name': config.prefect.work_pool
-                    },
-                    'schedule': {
-                        'interval': 3600  # Every hour
-                    },
-                    
-                    # Build steps to package source code
-                    'build': [
-                        {
-                            'prefect.deployments.steps.run_shell_script': {
-                                'script': 'echo "Packaging source code for S3 deployment"'
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-        
-        # Write prefect.yaml
-        yaml_file = Path('prefect.yaml')
-        with open(yaml_file, 'w') as f:
-            yaml.dump(yaml_config, f, default_flow_style=False)
-        
-        logger.info(f"✅ Created simple S3 deployment configuration: {yaml_file}")
-        
-        # Deploy using CLI
-        import subprocess
-        result = subprocess.run(
-            ['.venv/bin/prefect', 'deploy', '--all'],
-            capture_output=True,
-            text=True,
-            cwd=Path.cwd(),
-            env={**os.environ, 'PREFECT_API_URL': 'http://localhost:4200/api'}
-        )
-        
-        if result.returncode == 0:
-            logger.info("✅ Simple S3 deployment successful!")
-            logger.info(f"Deploy output: {result.stdout}")
-            return "crm-data-ingestion"
-        else:
-            logger.error(f"❌ Simple S3 deployment failed: {result.stderr}")
-            return None
-            
-    except Exception as e:
-        logger.error(f"❌ Simple S3 deployment failed: {str(e)}")
-        return None
-
-
 def deploy_crm_ingestion_flow():
     """Deploy CRM data ingestion flow using S3 storage with MinIO."""
     logger = logging.getLogger(__name__)
     
     logger.info("🚀 Starting CRM flow deployment with S3 storage...")
     
-    # Try S3 deployment methods in order of preference
-    strategies = [
-        ("S3 storage with file upload", deploy_with_s3_storage),
-        ("Simple S3 with git clone", deploy_with_simple_s3)
-    ]
-    
-    for strategy_name, deploy_func in strategies:
-        logger.info(f"🔄 Trying {strategy_name}...")
-        try:
-            result = deploy_func()
-            if result:
-                logger.info(f"✅ {strategy_name} successful!")
-                return result
-        except Exception as e:
-            logger.warning(f"⚠️ {strategy_name} failed: {str(e)}")
-            continue
-    
-    raise Exception("All S3 deployment strategies failed")
+    # Deploy using S3 storage with file upload
+    logger.info("🔄 Deploying with S3 storage and file upload...")
+    try:
+        result = deploy_with_s3_storage()
+        if result:
+            logger.info("✅ S3 storage deployment successful!")
+            return result
+        else:
+            raise Exception("S3 storage deployment failed")
+    except Exception as e:
+        logger.error(f"❌ S3 storage deployment failed: {str(e)}")
+        raise Exception("S3 deployment failed")
 
 
 def main():

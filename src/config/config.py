@@ -60,6 +60,20 @@ class MonitoringConfig:
 
 
 @dataclass
+class StorageConfig:
+    """Storage configuration for S3/MinIO."""
+    endpoint_url: str = "http://localhost:9000"
+    access_key: str = "minioadmin"
+    secret_key: str = "minioadmin"
+    region: str = "us-east-1"
+    buckets: Dict[str, str] = field(default_factory=lambda: {
+        "mlflow_artifacts": "mlflow-artifacts",
+        "data_lake": "data-lake",
+        "model_artifacts": "model-artifacts"
+    })
+
+
+@dataclass
 class Config:
     """Main configuration class."""
     data: DataConfig = field(default_factory=DataConfig)
@@ -67,6 +81,7 @@ class Config:
     prefect: PrefectConfig = field(default_factory=PrefectConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
+    storage: StorageConfig = field(default_factory=StorageConfig)
     environment: str = "development"
     debug: bool = True
     log_level: str = "INFO"
@@ -141,6 +156,12 @@ def get_config(config_path: Optional[str] = None) -> Config:
             for key, value in yaml_config['monitoring'].items():
                 if hasattr(config.monitoring, key):
                     setattr(config.monitoring, key, value)
+        
+        # Storage config (MinIO/S3)
+        if 'storage' in yaml_config:
+            for key, value in yaml_config['storage'].items():
+                if hasattr(config.storage, key):
+                    setattr(config.storage, key, value)
         
         # Top-level config
         for key in ['environment', 'debug', 'log_level', 'database_url', 'redis_url']:

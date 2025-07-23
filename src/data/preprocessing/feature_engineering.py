@@ -381,6 +381,7 @@ class CRMFeatureEngineer:
 def main():
     """Main function for running feature engineering."""
     from src.config.config import get_config
+    from src.utils.storage import StorageManager
     from pathlib import Path
     
     # Setup logging
@@ -392,15 +393,34 @@ def main():
     # Get configuration
     config = get_config()
     
+    # Create storage manager
+    config_dict = {
+        'minio': {
+            'endpoint_url': config.minio.endpoint_url,
+            'access_key': config.minio.access_key,
+            'secret_key': config.minio.secret_key,
+            'region': config.minio.region,
+            'buckets': config.minio.buckets
+        }
+    }
+    storage = StorageManager(config_dict)
+    
     # Load processed data
-    processed_data_path = Path(config.data.processed_data_path) / "crm_data_processed.csv"
+    if storage.use_s3:
+        processed_data_path = "processed/crm_data_processed.csv"
+        if not storage.exists(processed_data_path):
+            print(f"❌ Processed data file not found in S3: {processed_data_path}")
+            print("Please run data ingestion first: make data-pipeline-flow")
+            return 1
+        df = storage.load_dataframe(processed_data_path)
+    else:
+        processed_data_path = Path(config.data.processed_data_path) / "crm_data_processed.csv"
+        if not processed_data_path.exists():
+            print(f"❌ Processed data file not found: {processed_data_path}")
+            print("Please run data ingestion first: make data-download")
+            return 1
+        df = pd.read_csv(processed_data_path)
     
-    if not processed_data_path.exists():
-        print(f"❌ Processed data file not found: {processed_data_path}")
-        print("Please run data ingestion first: make data-download")
-        return 1
-    
-    df = pd.read_csv(processed_data_path)
     print(f"📊 Loaded data: {df.shape}")
     
     # Create feature engineer
@@ -414,15 +434,20 @@ def main():
     df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df)
     
     # Save processed data with features
-    features_path = Path(config.data.feature_store_path) / "crm_features.csv"
-    features_path.parent.mkdir(parents=True, exist_ok=True)
-    df_processed.to_csv(features_path, index=False)
+    if storage.use_s3:
+        features_path = "features/crm_features.csv"
+        saved_path = storage.save_dataframe(df_processed, features_path)
+    else:
+        features_path = Path(config.data.feature_store_path) / "crm_features.csv"
+        features_path.parent.mkdir(parents=True, exist_ok=True)
+        df_processed.to_csv(features_path, index=False)
+        saved_path = str(features_path)
     
     print(f"✅ Feature engineering completed!")
     print(f"📊 Final shape: {df_processed.shape}")
     print(f"🎯 Features created: {metadata['features_created']}")
     print(f"📝 Feature columns: {len(feature_columns)}")
-    print(f"💾 Saved to: {features_path}")
+    print(f"💾 Saved to: {saved_path}")
     
     return 0
 

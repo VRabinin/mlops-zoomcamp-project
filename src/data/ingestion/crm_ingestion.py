@@ -2,12 +2,14 @@
 
 import os
 import logging
+import tempfile
 import pandas as pd
 from pathlib import Path
 from typing import Dict, Any, Tuple, List, Optional
 import kaggle
 
 from src.data.schemas.crm_schema import CRMDataSchema
+from src.utils.storage import StorageManager
 
 
 class CRMDataIngestion:
@@ -24,15 +26,20 @@ class CRMDataIngestion:
         self.processed_data_path = Path(config.get('processed_data_path', 'data/processed'))
         self.kaggle_dataset = config.get('kaggle_dataset', 'innocentmfa/crm-sales-opportunities')
         
-        # Create directories if they don't exist
-        self.raw_data_path.mkdir(parents=True, exist_ok=True)
-        self.processed_data_path.mkdir(parents=True, exist_ok=True)
+        # Initialize storage manager
+        self.storage = StorageManager(config)
+        
+        # Create directories if using local storage
+        if not self.storage.use_s3:
+            self.raw_data_path.mkdir(parents=True, exist_ok=True)
+            self.processed_data_path.mkdir(parents=True, exist_ok=True)
         
         # Initialize schema
         self.schema = CRMDataSchema()
         
         # Setup logging
         self.logger = logging.getLogger(__name__)
+        self.logger.info(f"CRM Ingestion initialized - Storage: {self.storage.get_storage_info()}")
     
     def download_dataset(self) -> Tuple[bool, str]:
         """Download CRM dataset from Kaggle.
@@ -46,14 +53,41 @@ class CRMDataIngestion:
             # Authenticate with Kaggle API
             kaggle.api.authenticate()
             
-            # Download dataset to raw data path
-            kaggle.api.dataset_download_files(
-                self.kaggle_dataset,
-                path=str(self.raw_data_path),
-                unzip=True
-            )
+            if self.storage.use_s3:
+                # For S3 storage, download to a temporary local directory first
+                import tempfile
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    # Download dataset to temporary directory
+                    kaggle.api.dataset_download_files(
+                        self.kaggle_dataset,
+                        path=temp_dir,
+                        unzip=True
+                    )
+                    
+                    # Find and upload CSV files to S3
+                    temp_path = Path(temp_dir)
+                    csv_files = list(temp_path.glob("*.csv"))
+                    
+                    if not csv_files:
+                        return False, "No CSV files found in downloaded dataset"
+                    
+                    for csv_file in csv_files:
+                        # Read and upload to S3
+                        df = pd.read_csv(csv_file)
+                        s3_key = f"raw/{csv_file.name}"
+                        self.storage.save_dataframe(df, s3_key)
+                        self.logger.info(f"Uploaded {csv_file.name} to S3: {s3_key}")
+                    
+                    self.logger.info(f"Dataset uploaded to S3 storage - {len(csv_files)} files")
+            else:
+                # For local storage, download directly to raw data path
+                kaggle.api.dataset_download_files(
+                    self.kaggle_dataset,
+                    path=str(self.raw_data_path),
+                    unzip=True
+                )
+                self.logger.info("Dataset downloaded to local storage")
             
-            self.logger.info("Dataset downloaded successfully")
             return True, "Dataset downloaded successfully"
             
         except Exception as e:
@@ -67,7 +101,14 @@ class CRMDataIngestion:
         Returns:
             List of CSV file paths.
         """
-        csv_files = list(self.raw_data_path.glob("*.csv"))
+        if self.storage.use_s3:
+            # List CSV files from S3
+            files = self.storage.list_files("raw/")
+            csv_files = [Path(f) for f in files if f.endswith('.csv')]
+        else:
+            # List CSV files from local directory
+            csv_files = list(self.raw_data_path.glob("*.csv"))
+        
         self.logger.info(f"Found {len(csv_files)} CSV files: {[f.name for f in csv_files]}")
         return csv_files
     
@@ -85,32 +126,78 @@ class CRMDataIngestion:
             if not csv_files:
                 raise FileNotFoundError("No CSV files found in raw data directory")
             
-            # Use the first CSV file or look for main data file
-            file_path = csv_files[0]
+            # Look for the main sales pipeline data file
+            file_path = None
             for csv_file in csv_files:
-                if any(keyword in csv_file.name.lower() 
-                      for keyword in ['crm', 'sales', 'opportunities', 'data']):
+                file_name = csv_file.name.lower()
+                # Prioritize sales_pipeline.csv or similar main data files
+                if 'sales_pipeline' in file_name or 'pipeline' in file_name:
                     file_path = csv_file
                     break
+                elif any(keyword in file_name for keyword in ['crm', 'sales', 'opportunities', 'data']):
+                    # Exclude small files that are likely metadata
+                    if self.storage.use_s3:
+                        # For S3, we can't easily check file size, so use name patterns
+                        if 'dictionary' not in file_name and 'readme' not in file_name:
+                            file_path = csv_file
+                    else:
+                        # For local files, check file size
+                        if csv_file.stat().st_size > 100000:  # > 100KB
+                            file_path = csv_file
+            
+            # If no specific file found, use the largest file
+            if file_path is None:
+                if self.storage.use_s3:
+                    # For S3, just use the first non-dictionary file
+                    for csv_file in csv_files:
+                        if 'dictionary' not in csv_file.name.lower():
+                            file_path = csv_file
+                            break
+                else:
+                    # For local files, find the largest file
+                    file_path = max(csv_files, key=lambda f: f.stat().st_size if f.exists() else 0)
+            
+            if file_path is None:
+                file_path = csv_files[0]  # Fallback to first file
         
         self.logger.info(f"Loading data from: {file_path}")
         
         try:
-            # Try different encodings
-            for encoding in ['utf-8', 'latin-1', 'cp1252']:
-                try:
-                    df = pd.read_csv(file_path, encoding=encoding)
-                    self.logger.info(f"Data loaded successfully with encoding: {encoding}")
-                    self.logger.info(f"Data shape: {df.shape}")
-                    return df
-                except UnicodeDecodeError:
-                    continue
-            
-            # If all encodings fail, try without specifying encoding
-            df = pd.read_csv(file_path)
-            self.logger.info("Data loaded successfully with default encoding")
-            self.logger.info(f"Data shape: {df.shape}")
-            return df
+            if self.storage.use_s3:
+                # For S3, convert Path to string key
+                s3_key = f"raw/{file_path.name}"
+                
+                # Try different encodings
+                for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                    try:
+                        df = self.storage.load_dataframe(s3_key, encoding=encoding)
+                        self.logger.info(f"Data loaded successfully from S3 with encoding: {encoding}")
+                        self.logger.info(f"Data shape: {df.shape}")
+                        return df
+                    except UnicodeDecodeError:
+                        continue
+                
+                # If all encodings fail, try without specifying encoding
+                df = self.storage.load_dataframe(s3_key)
+                self.logger.info("Data loaded successfully from S3 with default encoding")
+                self.logger.info(f"Data shape: {df.shape}")
+                return df
+            else:
+                # For local files
+                for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                    try:
+                        df = pd.read_csv(file_path, encoding=encoding)
+                        self.logger.info(f"Data loaded successfully with encoding: {encoding}")
+                        self.logger.info(f"Data shape: {df.shape}")
+                        return df
+                    except UnicodeDecodeError:
+                        continue
+                
+                # If all encodings fail, try without specifying encoding
+                df = pd.read_csv(file_path)
+                self.logger.info("Data loaded successfully with default encoding")
+                self.logger.info(f"Data shape: {df.shape}")
+                return df
             
         except Exception as e:
             error_msg = f"Failed to load data from {file_path}: {str(e)}"
@@ -206,20 +293,27 @@ class CRMDataIngestion:
         
         return max(0.0, min(1.0, score))
     
-    def save_processed_data(self, df: pd.DataFrame, filename: str = "crm_data_processed.csv") -> Path:
-        """Save processed data to CSV file.
+    def save_processed_data(self, df: pd.DataFrame, filename: str = "crm_data_processed.csv") -> str:
+        """Save processed data to storage.
         
         Args:
             df: Processed DataFrame.
             filename: Output filename.
             
         Returns:
-            Path to saved file.
+            Path/URI where file was saved.
         """
-        output_path = self.processed_data_path / filename
-        df.to_csv(output_path, index=False)
-        self.logger.info(f"Processed data saved to: {output_path}")
-        return output_path
+        if self.storage.use_s3:
+            # Save to S3 with processed/ prefix
+            s3_key = f"processed/{filename}"
+            saved_path = self.storage.save_dataframe(df, s3_key)
+        else:
+            # Save to local processed directory
+            local_path = self.processed_data_path / filename
+            saved_path = self.storage.save_dataframe(df, str(local_path))
+        
+        self.logger.info(f"Processed data saved to: {saved_path}")
+        return saved_path
     
     def run_ingestion(self) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
         """Run complete data ingestion pipeline.
@@ -262,8 +356,8 @@ class CRMDataIngestion:
             metadata['steps_completed'].append('validate')
             
             # Step 5: Save processed data
-            output_path = self.save_processed_data(df_cleaned)
-            metadata['output_path'] = str(output_path)
+            saved_path = self.save_processed_data(df_cleaned)
+            metadata['output_path'] = saved_path
             metadata['steps_completed'].append('save')
             
             self.logger.info("Data ingestion pipeline completed successfully")
@@ -291,11 +385,20 @@ def main():
     config = get_config()
     
     # Create ingestion instance
-    ingestion = CRMDataIngestion({
+    config_dict = {
         'raw_data_path': config.data.raw_data_path,
         'processed_data_path': config.data.processed_data_path,
-        'kaggle_dataset': config.data.kaggle_dataset
-    })
+        'kaggle_dataset': config.data.kaggle_dataset,
+        'minio': {
+            'endpoint_url': config.minio.endpoint_url,
+            'access_key': config.minio.access_key,
+            'secret_key': config.minio.secret_key,
+            'region': config.minio.region,
+            'buckets': config.minio.buckets
+        }
+    }
+    
+    ingestion = CRMDataIngestion(config_dict)
     
     # Run ingestion
     success, df, metadata = ingestion.run_ingestion()
