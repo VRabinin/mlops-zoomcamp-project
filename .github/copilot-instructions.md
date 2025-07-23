@@ -156,10 +156,10 @@ make minio-clear-data           # Clear all bucket data (development)
 ```
 
 ### **S3 Integration Patterns**
-- **MLflow Artifacts**: Stored in `mlflow-artifacts` bucket
-- **Prefect Code**: Uploaded to `data-lake/prefect-flows/`
-- **Model Storage**: Saved to `model-artifacts` bucket
-- **Data Lake**: Raw/processed data in `data-lake` bucket
+- **MLflow Artifacts**: Stored in configurable `${MLFLOW_ARTIFACTS_BUCKET}` bucket
+- **Prefect Code**: Uploaded to `${DATA_LAKE_BUCKET}/${S3_PREFECT_FLOWS_PATH}/`
+- **Model Storage**: Saved to configurable `${MODEL_ARTIFACTS_BUCKET}` bucket
+- **Data Lake**: Raw/processed data in configurable `${DATA_LAKE_BUCKET}` bucket
 
 ### **Configuration Switching**
 ```yaml

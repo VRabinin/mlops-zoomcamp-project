@@ -144,25 +144,25 @@ class CRMDataSchema:
             clean_name = clean_name.replace('.', '_')
             clean_name = clean_name.replace('(', '').replace(')', '')
             
-        # Handle common variations
-        if 'opportunity' in clean_name and 'id' in clean_name:
-            clean_name = 'opportunity_id'
-        elif 'sales' in clean_name and 'agent' in clean_name:
-            clean_name = 'sales_agent'
-        elif 'account' in clean_name:
-            clean_name = 'account'
-        elif 'deal' in clean_name and 'stage' in clean_name:
-            clean_name = 'deal_stage'
-        elif 'close' in clean_name and 'value' in clean_name:
-            clean_name = 'close_value'
-        elif 'close' in clean_name and 'date' in clean_name:
-            clean_name = 'close_date'
-        elif 'engage' in clean_name and 'date' in clean_name:
-            clean_name = 'engage_date'
-        elif 'product' in clean_name:
-            clean_name = 'product'
-        
-        column_mapping[col] = clean_name
+            # Handle common variations
+            if 'opportunity' in clean_name and 'id' in clean_name:
+                clean_name = 'opportunity_id'
+            elif 'sales' in clean_name and 'agent' in clean_name:
+                clean_name = 'sales_agent'
+            elif 'account' in clean_name:
+                clean_name = 'account'
+            elif 'deal' in clean_name and 'stage' in clean_name:
+                clean_name = 'deal_stage'
+            elif 'close' in clean_name and 'value' in clean_name:
+                clean_name = 'close_value'
+            elif 'close' in clean_name and 'date' in clean_name:
+                clean_name = 'close_date'
+            elif 'engage' in clean_name and 'date' in clean_name:
+                clean_name = 'engage_date'
+            elif 'product' in clean_name:
+                clean_name = 'product'
+            
+            column_mapping[col] = clean_name
         
         df_cleaned = df_cleaned.rename(columns=column_mapping)
         return df_cleaned

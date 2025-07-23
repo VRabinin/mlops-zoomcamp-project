@@ -132,9 +132,9 @@ def engineer_features_task(df: pd.DataFrame, config: Dict[str, Any]) -> Tuple[bo
     
     try:
         feature_engineer = CRMFeatureEngineer({
-            'target_column': config.get('target_column', 'deal_stage'),
-            'test_size': config.get('test_size', 0.2),
-            'random_state': config.get('random_state', 42)
+            'target_column': 'deal_stage',
+            'test_size': 0.2,
+            'random_state': 42
         })
         
         df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df)
@@ -178,15 +178,10 @@ def save_processed_data_task(df: pd.DataFrame, config: Dict[str, Any], suffix: s
                 output_path = Path(config['processed_data_path']) / "crm_data_processed.csv"
                 file_path = str(output_path)
         else:
-            if storage.use_s3:
-                # Save to S3 with features/ prefix
-                file_path = f"features/crm_{suffix}.csv"
-            else:
-                # Save to local features directory
-                output_path = Path(config.get('feature_store_path', 'data/features')) / f"crm_{suffix}.csv"
-                file_path = str(output_path)
+            # Use typed storage method for consistent path handling
+            file_path = f"crm_{suffix}.csv"
         
-        saved_path = storage.save_dataframe(df, file_path)
+        saved_path = storage.save_dataframe_by_type(df, 'features', file_path)
         
         logger.info(f"💾 Data saved to: {saved_path}")
         return True, saved_path
@@ -208,10 +203,18 @@ def crm_data_ingestion_flow():
         'raw_data_path': config.data.raw_data_path,
         'processed_data_path': config.data.processed_data_path,
         'feature_store_path': config.data.feature_store_path,
-        'kaggle_dataset': config.data.kaggle_dataset,
-        'target_column': config.model.target_column,
-        'test_size': config.model.test_size,
-        'random_state': config.model.random_state,
+        'kaggle_dataset': 'innocentmfa/crm-sales-opportunities',
+        # New storage configuration
+        'storage': {
+            'endpoint_url': config.storage.endpoint_url,
+            'access_key': config.storage.access_key,
+            'secret_key': config.storage.secret_key,
+            'region': config.storage.region,
+            'buckets': config.storage.buckets,
+            's3_paths': config.storage.s3_paths,
+            'data_paths': config.storage.data_paths  # Keep for backward compatibility
+        },
+        # Legacy minio config for backward compatibility
         'minio': {
             'endpoint_url': config.storage.endpoint_url,
             'access_key': config.storage.access_key,

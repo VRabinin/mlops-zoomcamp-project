@@ -1,0 +1,45 @@
+# Production Data Configuration
+data:
+  # Local filesystem paths (for direct execution - not typically used in prod)
+  local_paths:
+    raw_data_path: "/opt/mlops/data/raw"
+    processed_data_path: "/opt/mlops/data/processed"
+    feature_store_path: "/opt/mlops/data/features"
+
+# MLFlow configuration
+mlflow:
+  tracking_uri: "https://mlflow.company.com"
+  artifact_location: "s3://prod-mlflow-artifacts/"
+
+# Prefect configuration
+prefect:
+  api_url: "https://prefect.company.com/api"
+  work_pool: "production-pool"
+
+# Environment settings
+environment: "production"
+debug: false
+log_level: "INFO"
+
+# Infrastructure
+database_url: "postgresql://prod-mlops-user:password@prod-db.company.com:5432/mlops_prod"
+redis_url: "redis://prod-cache.company.com:6379"
+
+# Storage configuration
+storage:
+  endpoint_url: null  # Use AWS S3 default
+  access_key: null    # Use IAM roles
+  secret_key: null    # Use IAM roles
+  region: "us-east-1"
+  buckets:
+    mlflow_artifacts: "prod-mlflow-artifacts"
+    data_lake: "prod-data-lake"
+    model_artifacts: "prod-model-registry"
+  # S3 paths within buckets (for production organization)
+  s3_paths:
+    raw: "ingestion/raw"
+    processed: "pipeline/processed"
+    features: "ml/features"
+    models: "registry/models"
+    experiments: "tracking/experiments"
+    prefect_flows: "orchestration/flows"

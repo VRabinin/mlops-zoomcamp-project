@@ -22,9 +22,11 @@ class CRMDataIngestion:
             config: Configuration dictionary containing data paths and settings.
         """
         self.config = config
+        
+        # For backward compatibility, still support direct path config
         self.raw_data_path = Path(config.get('raw_data_path', 'data/raw'))
         self.processed_data_path = Path(config.get('processed_data_path', 'data/processed'))
-        self.kaggle_dataset = config.get('kaggle_dataset', 'innocentmfa/crm-sales-opportunities')
+        self.kaggle_dataset = 'innocentmfa/crm-sales-opportunities'
         
         # Initialize storage manager
         self.storage = StorageManager(config)
@@ -72,11 +74,10 @@ class CRMDataIngestion:
                         return False, "No CSV files found in downloaded dataset"
                     
                     for csv_file in csv_files:
-                        # Read and upload to S3
+                        # Read and upload to S3 using typed storage
                         df = pd.read_csv(csv_file)
-                        s3_key = f"raw/{csv_file.name}"
-                        self.storage.save_dataframe(df, s3_key)
-                        self.logger.info(f"Uploaded {csv_file.name} to S3: {s3_key}")
+                        self.storage.save_dataframe_by_type(df, 'raw', csv_file.name)
+                        self.logger.info(f"Uploaded {csv_file.name} to S3 raw data storage")
                     
                     self.logger.info(f"Dataset uploaded to S3 storage - {len(csv_files)} files")
             else:
@@ -164,13 +165,11 @@ class CRMDataIngestion:
         
         try:
             if self.storage.use_s3:
-                # For S3, convert Path to string key
-                s3_key = f"raw/{file_path.name}"
-                
+                # For S3, load using typed storage method
                 # Try different encodings
                 for encoding in ['utf-8', 'latin-1', 'cp1252']:
                     try:
-                        df = self.storage.load_dataframe(s3_key, encoding=encoding)
+                        df = self.storage.load_dataframe_by_type('raw', file_path.name, encoding=encoding)
                         self.logger.info(f"Data loaded successfully from S3 with encoding: {encoding}")
                         self.logger.info(f"Data shape: {df.shape}")
                         return df
@@ -178,7 +177,7 @@ class CRMDataIngestion:
                         continue
                 
                 # If all encodings fail, try without specifying encoding
-                df = self.storage.load_dataframe(s3_key)
+                df = self.storage.load_dataframe_by_type('raw', file_path.name)
                 self.logger.info("Data loaded successfully from S3 with default encoding")
                 self.logger.info(f"Data shape: {df.shape}")
                 return df
@@ -304,13 +303,11 @@ class CRMDataIngestion:
             Path/URI where file was saved.
         """
         if self.storage.use_s3:
-            # Save to S3 with processed/ prefix
-            s3_key = f"processed/{filename}"
-            saved_path = self.storage.save_dataframe(df, s3_key)
+            # Save to S3 using typed storage method
+            saved_path = self.storage.save_dataframe_by_type(df, 'processed', filename)
         else:
-            # Save to local processed directory
-            local_path = self.processed_data_path / filename
-            saved_path = self.storage.save_dataframe(df, str(local_path))
+            # Save to local processed directory using typed storage method
+            saved_path = self.storage.save_dataframe_by_type(df, 'processed', filename)
         
         self.logger.info(f"Processed data saved to: {saved_path}")
         return saved_path
@@ -388,13 +385,23 @@ def main():
     config_dict = {
         'raw_data_path': config.data.raw_data_path,
         'processed_data_path': config.data.processed_data_path,
-        'kaggle_dataset': config.data.kaggle_dataset,
+        'kaggle_dataset': 'innocentmfa/crm-sales-opportunities',
+        'storage': {
+            'endpoint_url': config.storage.endpoint_url,
+            'access_key': config.storage.access_key,
+            'secret_key': config.storage.secret_key,
+            'region': config.storage.region,
+            'buckets': config.storage.buckets,
+            's3_paths': config.storage.s3_paths,
+            'data_paths': config.storage.data_paths
+        },
+        # Legacy minio config for backward compatibility
         'minio': {
-            'endpoint_url': config.minio.endpoint_url,
-            'access_key': config.minio.access_key,
-            'secret_key': config.minio.secret_key,
-            'region': config.minio.region,
-            'buckets': config.minio.buckets
+            'endpoint_url': config.storage.endpoint_url,
+            'access_key': config.storage.access_key,
+            'secret_key': config.storage.secret_key,
+            'region': config.storage.region,
+            'buckets': config.storage.buckets
         }
     }
     

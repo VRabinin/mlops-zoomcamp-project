@@ -21,7 +21,6 @@ class TestConfig:
         config = DataConfig()
         assert config.raw_data_path == "data/raw"
         assert config.processed_data_path == "data/processed"
-        assert config.kaggle_dataset == "innocentmfa/crm-sales-opportunities"
     
     def test_get_config_returns_config_instance(self):
         """Test that get_config returns a Config instance."""

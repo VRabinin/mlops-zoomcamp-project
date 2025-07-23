@@ -46,9 +46,9 @@ class StorageManager:
             self.logger.info("S3 storage forced via environment variable")
             return True
         
-        # Check if we're running in Prefect
-        if os.getenv('PREFECT_API_URL'):
-            self.logger.info("Prefect environment detected - using S3 storage")
+        # Check if we're running in a Prefect worker (not just client)
+        if os.getenv('PREFECT_WORKER_TYPE') or os.getenv('PREFECT_API_URL', '').startswith('https://'):
+            self.logger.info("Prefect worker environment detected - using S3 storage")
             return True
         
         # Default to local storage
@@ -58,18 +58,22 @@ class StorageManager:
     def _setup_s3_client(self):
         """Setup S3/MinIO client."""
         try:
-            minio_config = self.config.get('minio', {})
+            # Try new storage config first, fallback to legacy minio config
+            storage_config = self.config.get('storage', {})
+            if not storage_config:
+                storage_config = self.config.get('minio', {})
             
             # Get S3 configuration
-            endpoint_url = minio_config.get('endpoint_url', 'http://localhost:9000')
-            access_key = minio_config.get('access_key', 'minioadmin')
-            secret_key = minio_config.get('secret_key', 'minioadmin')
-            region = minio_config.get('region', 'us-east-1')
+            endpoint_url = storage_config.get('endpoint_url', 'http://localhost:9000')
+            access_key = storage_config.get('access_key', 'minioadmin')
+            secret_key = storage_config.get('secret_key', 'minioadmin')
+            region = storage_config.get('region', 'us-east-1')
             
             # Override with environment variables if available
             endpoint_url = os.getenv('MINIO_ENDPOINT', endpoint_url)
             access_key = os.getenv('MINIO_ROOT_USER', access_key)
             secret_key = os.getenv('MINIO_ROOT_PASSWORD', secret_key)
+            region = os.getenv('AWS_DEFAULT_REGION', region)
             
             # For Docker environment, use service name
             if os.path.exists('/.dockerenv'):
@@ -84,13 +88,38 @@ class StorageManager:
             )
             
             # Get bucket configuration
-            buckets_config = minio_config.get('buckets', {})
+            buckets_config = storage_config.get('buckets', {})
             self.data_bucket = buckets_config.get('data_lake', 'data-lake')
+            self.mlflow_bucket = buckets_config.get('mlflow_artifacts', 'mlflow-artifacts')
+            self.model_bucket = buckets_config.get('model_artifacts', 'model-artifacts')
             
-            self.logger.info(f"S3 client configured - endpoint: {endpoint_url}, bucket: {self.data_bucket}")
+            # Override with environment variables
+            self.data_bucket = os.getenv('DATA_LAKE_BUCKET', self.data_bucket)
+            self.mlflow_bucket = os.getenv('MLFLOW_ARTIFACTS_BUCKET', self.mlflow_bucket)
+            self.model_bucket = os.getenv('MODEL_ARTIFACTS_BUCKET', self.model_bucket)
             
-            # Ensure bucket exists
-            self._ensure_bucket_exists(self.data_bucket)
+            # Get data path configuration - check both s3_paths and data_paths for backward compatibility
+            s3_paths = storage_config.get('s3_paths', {})
+            data_paths = storage_config.get('data_paths', {})
+            # Prefer s3_paths if available, fallback to data_paths
+            paths_config = s3_paths if s3_paths else data_paths
+            
+            self.data_paths = {
+                'raw': os.getenv('S3_RAW_DATA_PATH', paths_config.get('raw', 'raw')),
+                'processed': os.getenv('S3_PROCESSED_DATA_PATH', paths_config.get('processed', 'processed')),
+                'features': os.getenv('S3_FEATURES_DATA_PATH', paths_config.get('features', 'features')),
+                'models': os.getenv('S3_MODELS_PATH', paths_config.get('models', 'models')),
+                'experiments': os.getenv('S3_EXPERIMENTS_PATH', paths_config.get('experiments', 'experiments')),
+                'prefect_flows': os.getenv('S3_PREFECT_FLOWS_PATH', paths_config.get('prefect_flows', 'prefect-flows'))
+            }
+            
+            self.logger.info(f"S3 client configured - endpoint: {endpoint_url}")
+            self.logger.info(f"Buckets - data: {self.data_bucket}, mlflow: {self.mlflow_bucket}, models: {self.model_bucket}")
+            self.logger.info(f"Data paths: {self.data_paths}")
+            
+            # Ensure buckets exist
+            for bucket in [self.data_bucket, self.mlflow_bucket, self.model_bucket]:
+                self._ensure_bucket_exists(bucket)
             
         except Exception as e:
             self.logger.error(f"Failed to setup S3 client: {str(e)}")
@@ -377,6 +406,99 @@ class StorageManager:
             })
         
         return info
+
+
+    def get_s3_path(self, data_type: str, filename: str) -> str:
+        """Get S3 path for a given data type and filename.
+        
+        Args:
+            data_type: Type of data ('raw', 'processed', 'features', 'models', etc.)
+            filename: Name of the file
+            
+        Returns:
+            Full S3 path
+        """
+        if data_type not in self.data_paths:
+            raise ValueError(f"Unknown data type: {data_type}. Available: {list(self.data_paths.keys())}")
+        
+        base_path = self.data_paths[data_type]
+        return f"{base_path}/{filename}".lstrip('/')
+    
+    def get_bucket_for_data_type(self, data_type: str) -> str:
+        """Get appropriate bucket for a data type.
+        
+        Args:
+            data_type: Type of data
+            
+        Returns:
+            Bucket name
+        """
+        # Map data types to buckets
+        data_type_to_bucket = {
+            'raw': self.data_bucket,
+            'processed': self.data_bucket,
+            'features': self.data_bucket,
+            'experiments': self.mlflow_bucket,
+            'models': self.model_bucket,
+            'prefect_flows': self.data_bucket
+        }
+        
+        return data_type_to_bucket.get(data_type, self.data_bucket)
+    
+    def save_dataframe_by_type(self, df: pd.DataFrame, data_type: str, filename: str, **kwargs) -> str:
+        """Save DataFrame with automatic bucket and path selection.
+        
+        Args:
+            df: DataFrame to save
+            data_type: Type of data ('raw', 'processed', 'features', etc.)
+            filename: Name of the file
+            **kwargs: Additional arguments for to_csv()
+            
+        Returns:
+            Full path/URL where file was saved
+        """
+        if self.use_s3:
+            s3_path = self.get_s3_path(data_type, filename)
+            bucket = self.get_bucket_for_data_type(data_type)
+            
+            # Temporarily override the bucket for this operation
+            original_bucket = self.data_bucket
+            self.data_bucket = bucket
+            try:
+                return self._save_dataframe_s3(df, s3_path, **kwargs)
+            finally:
+                self.data_bucket = original_bucket
+        else:
+            # For local storage, use data type as subdirectory
+            local_path = f"data/{data_type}/{filename}"
+            return self._save_dataframe_local(df, local_path, **kwargs)
+    
+    def load_dataframe_by_type(self, data_type: str, filename: str, **kwargs) -> pd.DataFrame:
+        """Load DataFrame with automatic bucket and path selection.
+        
+        Args:
+            data_type: Type of data ('raw', 'processed', 'features', etc.)
+            filename: Name of the file
+            **kwargs: Additional arguments for read_csv()
+            
+        Returns:
+            Loaded DataFrame
+        """
+        if self.use_s3:
+            s3_path = self.get_s3_path(data_type, filename)
+            bucket = self.get_bucket_for_data_type(data_type)
+            
+            # Temporarily override the bucket for this operation
+            original_bucket = self.data_bucket
+            self.data_bucket = bucket
+            try:
+                return self._load_dataframe_s3(s3_path, **kwargs)
+            finally:
+                self.data_bucket = original_bucket
+        else:
+            # For local storage, use data type as subdirectory
+            local_path = f"data/{data_type}/{filename}"
+            return self._load_dataframe_local(local_path, **kwargs)
 
 
 def create_storage_manager(config: Dict[str, Any]) -> StorageManager:

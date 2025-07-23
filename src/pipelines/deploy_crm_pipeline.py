@@ -49,15 +49,15 @@ def deploy_with_s3_storage():
                 'pull': [
                     {
                         'prefect_aws.deployments.steps.pull_from_s3': {
-                            'bucket': 'data-lake',
-                            'folder': 'prefect-flows/',
+                            'bucket': os.getenv('DATA_LAKE_BUCKET', 'data-lake'),
+                            'folder': f"{os.getenv('S3_PREFECT_FLOWS_PATH', 'prefect-flows')}/",
                             'credentials': {
-                                'aws_access_key_id': 'minioadmin',
-                                'aws_secret_access_key': 'minioadmin'
+                                'aws_access_key_id': os.getenv('MINIO_ROOT_USER', 'minioadmin'),
+                                'aws_secret_access_key': os.getenv('MINIO_ROOT_PASSWORD', 'minioadmin')
                             },
                             'client_parameters': {
                                 'endpoint_url': 'http://minio:9000',
-                                'region_name': 'us-east-1'
+                                'region_name': os.getenv('AWS_DEFAULT_REGION', 'us-east-1')
                             }
                         }
                     }
@@ -97,26 +97,29 @@ def deploy_with_s3_storage():
             )
             
             # Upload all Python files to S3
+            prefect_flows_path = os.getenv('S3_PREFECT_FLOWS_PATH', 'prefect-flows')
+            data_lake_bucket = os.getenv('DATA_LAKE_BUCKET', 'data-lake')
+            
             for py_file in Path(temp_dir).rglob("*.py"):
                 relative_path = py_file.relative_to(temp_dir)
-                s3_key = f"prefect-flows/{relative_path}"
+                s3_key = f"{prefect_flows_path}/{relative_path}"
                 
                 logger.info(f"📤 Uploading {relative_path} to MinIO S3...")
                 s3_client.upload_file(
                     str(py_file), 
-                    'data-lake', 
+                    data_lake_bucket, 
                     s3_key
                 )
             
             # Also upload config files
             for config_file in Path(temp_dir).rglob("*.yaml"):
                 relative_path = config_file.relative_to(temp_dir)
-                s3_key = f"prefect-flows/{relative_path}"
+                s3_key = f"{prefect_flows_path}/{relative_path}"
                 
                 logger.info(f"📤 Uploading {relative_path} to MinIO S3...")
                 s3_client.upload_file(
                     str(config_file), 
-                    'data-lake', 
+                    data_lake_bucket, 
                     s3_key
                 )
             

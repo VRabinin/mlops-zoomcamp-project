@@ -18,9 +18,9 @@ class CRMFeatureEngineer:
             config: Configuration dictionary.
         """
         self.config = config
-        self.target_column = config.get('target_column', 'deal_stage')
-        self.test_size = config.get('test_size', 0.2)
-        self.random_state = config.get('random_state', 42)
+        self.target_column = 'deal_stage'
+        self.test_size = 0.2
+        self.random_state = 42
         
         self.label_encoders = {}
         self.scaler = StandardScaler()

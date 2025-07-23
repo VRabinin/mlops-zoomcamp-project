@@ -1,0 +1,45 @@
+# Staging Data Configuration
+data:
+  # Local filesystem paths (for direct execution)
+  local_paths:
+    raw_data_path: "staging/data/raw"
+    processed_data_path: "staging/data/processed"
+    feature_store_path: "staging/data/features"
+
+# MLFlow configuration
+mlflow:
+  tracking_uri: "http://staging-mlflow:5000"
+  artifact_location: "s3://staging-mlflow-artifacts/"
+
+# Prefect configuration
+prefect:
+  api_url: "http://staging-prefect:4200/api"
+  work_pool: "staging-pool"
+
+# Environment settings
+environment: "staging"
+debug: true
+log_level: "DEBUG"
+
+# Infrastructure
+database_url: "postgresql://staging-mlops-user:password@staging-db:5432/mlops_staging"
+redis_url: "redis://staging-redis:6379"
+
+# Storage configuration
+storage:
+  endpoint_url: "http://staging-minio:9000"
+  access_key: "staging-admin"
+  secret_key: "staging-password"
+  region: "us-east-1"
+  buckets:
+    mlflow_artifacts: "staging-mlflow-artifacts"
+    data_lake: "staging-data-lake"
+    model_artifacts: "staging-model-registry"
+  # S3 paths within buckets (for staging organization)
+  s3_paths:
+    raw: "staging/raw"
+    processed: "staging/processed"
+    features: "staging/features"
+    models: "staging/models"
+    experiments: "staging/experiments"
+    prefect_flows: "staging/flows"

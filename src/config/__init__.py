@@ -5,8 +5,8 @@ from .config import (
     DataConfig,
     MLflowConfig,
     PrefectConfig,
-    ModelConfig,
     MonitoringConfig,
+    StorageConfig,
     get_config,
     load_config_from_yaml
 )
@@ -16,8 +16,8 @@ __all__ = [
     'DataConfig', 
     'MLflowConfig',
     'PrefectConfig',
-    'ModelConfig',
     'MonitoringConfig',
+    'StorageConfig',
     'get_config',
     'load_config_from_yaml'
 ]

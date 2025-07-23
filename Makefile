@@ -157,7 +157,7 @@ prefect-deploy-crm: ## Deploy CRM ingestion flow with S3 storage
 prefect-deploy-s3: ## Deploy CRM flow with S3 storage (MinIO)
 	@echo "Deploying CRM flow with S3 storage (MinIO)..."
 	@echo "Ensuring MinIO S3 bucket exists..."
-	@docker exec mlops-minio-setup mc mb minio/data-lake --ignore-existing 2>/dev/null || true
+	@docker exec mlops-minio-setup mc mb minio/${DATA_LAKE_BUCKET:-data-lake} --ignore-existing 2>/dev/null || true
 	@export PREFECT_API_URL=http://localhost:4200/api && \
 	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python -c "\
 from src.pipelines.deploy_crm_pipeline import deploy_with_s3_storage; \
