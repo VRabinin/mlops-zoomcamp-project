@@ -197,7 +197,7 @@ src/
 
 **Goals**:
 - [ ] Terraform modules for AWS infrastructure
-- [ ] Local development with Docker and LocalStack
+- [ ] Local development with Docker and MinIO
 - [ ] HashiCorp Nomad setup
 - [ ] Networking and security configuration
 - [ ] Multi-environment support
@@ -221,7 +221,7 @@ infrastructure/
 │   └── policies/
 ├── docker/
 │   └── services/
-└── localstack/
+└── minio/
     └── config/
 ```
 
@@ -376,7 +376,7 @@ infrastructure/
 - **Feature Engineering**: 23 ML-ready features from 8 original columns
 - **Quality Assurance**: 0.93 validation score with comprehensive checks
 - **Workflow Management**: 11 comprehensive Makefile commands for Prefect operations
-- **Infrastructure**: Docker Compose integration with PostgreSQL, Redis, LocalStack
+- **Infrastructure**: Docker Compose integration with PostgreSQL, Redis, MinIO
 - **Monitoring**: Real-time status tracking and execution dashboard
 
 **Impact**: Robust foundation for Phase 3 (ML Training) with enterprise-grade workflow orchestration.

@@ -26,7 +26,7 @@ The platform follows a microservices-based architecture with the following key c
 - **Container Orchestration**: HashiCorp Nomad
 
 ### Environment Support
-- **Local Development**: Docker + LocalStack
+- **Local Development**: Docker + MinIO
 - **Production Deployment**: AWS Cloud
 
 ## 📁 Project Structure
@@ -145,7 +145,7 @@ make data-process     # Process raw data into features
 make prefect-run-crm  # Run flow without deploying
 
 # Deploy CRM flow to Prefect server
-#Data is stored in the bucket on localstack
+#Data is stored in the bucket on MinIO
 make prefect-deploy-crm  # Deploy flow for scheduled/manual execution
 
 # Monitor workflow execution
@@ -253,7 +253,7 @@ make prefect-stop       # Stop Prefect services
 - **Feature Engineering**: 23 engineered features from 8 original columns  
 - **Data Quality**: 0.93 validation score with comprehensive quality checks
 - **Orchestration**: Prefect 3.x workflows with scheduling and monitoring
-- **Infrastructure**: Docker Compose with PostgreSQL, Redis, and LocalStack
+- **Infrastructure**: Docker Compose with PostgreSQL, Redis, and MinIO
 
 ### Available Make Commands
 
@@ -390,9 +390,34 @@ docker compose logs postgres
 lsof -i :5000  # MLFlow
 lsof -i :4200  # Prefect
 lsof -i :5432  # PostgreSQL
+lsof -i :9000  # MinIO API
+lsof -i :9001  # MinIO Console
 
 # Kill processes if needed
 sudo kill -9 <PID>
+```
+
+**MinIO S3 Storage Issues:**
+```bash
+# Check MinIO containers
+docker ps | grep minio
+
+# Check MinIO status
+make minio-status
+
+# List MinIO buckets
+make minio-buckets
+
+# Check MinIO logs
+docker logs mlops-minio
+docker logs mlops-minio-setup
+
+# Access MinIO web UI
+open http://localhost:9001
+# Login: minioadmin / minioadmin
+
+# Clear MinIO data if needed
+make minio-clear-data
 ```
 
 ### Getting Help

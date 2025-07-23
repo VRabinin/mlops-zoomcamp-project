@@ -9,7 +9,7 @@ This is a **CRM Sales Opportunities MLOps Platform** - an end-to-end machine lea
 - **Orchestration**: Prefect 2.14+ for workflow management
 - **Experiment Tracking**: MLflow 2.7+ with PostgreSQL backend  
 - **Data Source**: Kaggle CRM dataset (`innocentmfa/crm-sales-opportunities`)
-- **Services**: Docker Compose with PostgreSQL, Redis, LocalStack (AWS emulation)
+- **Services**: Docker Compose with PostgreSQL, Redis, MinIO (S3-compatible storage)
 - **Infrastructure**: Terraform + HashiCorp Nomad for container orchestration
 - **CI/CD**: GitHub Actions with security scanning and multi-stage builds
 
@@ -58,7 +58,7 @@ make architecture-start         # View C4 diagrams at localhost:8080
 - **Environment**: `.env` file from `.env.template` (requires Kaggle API credentials)
 - **App Config**: `config/development.yaml` for structured settings
 - **Database**: PostgreSQL with MLflow backend store
-- **Artifact Storage**: LocalStack S3 (dev) → AWS S3 (prod)
+- **Artifact Storage**: MinIO S3 (dev) → AWS S3 (prod)
 - **Multi-Environment Pattern**: 
   - Base config in `development.yaml`
   - Override with environment variables for staging/prod
@@ -123,13 +123,58 @@ make data-pipeline              # Download → validate → process
 make test lint                  # Quality checks
 make mlflow-ui                  # http://localhost:5000
 make prefect-server             # http://localhost:4200
+make minio-ui                   # http://localhost:9001
 ```
 
 ### Service URLs (Local)
 - **MLflow UI**: http://localhost:5000 (experiment tracking)
 - **Prefect UI**: http://localhost:4200 (workflow management)
+- **MinIO UI**: http://localhost:9001 (S3 storage management)
+- **MinIO API**: http://localhost:9000 (S3-compatible API)
 - **Architecture**: http://localhost:8080 (C4 diagrams)
 - **PostgreSQL**: localhost:5432 (mlops/mlops_user/mlops_password)
+
+## 🗄️ MinIO S3 Storage
+
+### **Storage Architecture**
+- **Development Storage**: MinIO S3-compatible object storage
+- **Production**: AWS S3 (configuration-based switch)
+- **Buckets**: `data-lake`, `mlflow-artifacts`, `model-artifacts`
+- **Access**: `minioadmin` / `minioadmin` (development credentials)
+
+### **MinIO Commands**
+```bash
+# MinIO management
+make minio-buckets              # List all buckets
+make minio-list-data            # List data-lake bucket contents  
+make minio-ui                   # Open MinIO web UI
+make minio-status               # Check MinIO container status
+
+# Storage operations
+make minio-create-buckets       # Create required buckets
+make minio-clear-data           # Clear all bucket data (development)
+```
+
+### **S3 Integration Patterns**
+- **MLflow Artifacts**: Stored in `mlflow-artifacts` bucket
+- **Prefect Code**: Uploaded to `data-lake/prefect-flows/`
+- **Model Storage**: Saved to `model-artifacts` bucket
+- **Data Lake**: Raw/processed data in `data-lake` bucket
+
+### **Configuration Switching**
+```yaml
+# development.yaml (MinIO)
+s3:
+  endpoint_url: http://localhost:9000
+  access_key: minioadmin
+  secret_key: minioadmin
+
+# production.yaml (AWS S3)
+s3:
+  endpoint_url: null  # Uses AWS default
+  access_key: ${AWS_ACCESS_KEY_ID}
+  secret_key: ${AWS_SECRET_ACCESS_KEY}
+```
 
 ## 📋 Key Implementation Notes
 
@@ -154,7 +199,7 @@ make prefect-server             # http://localhost:4200
 
 ### External Systems
 - **Kaggle API**: Dataset ingestion with credential management
-- **MLflow**: Backend store on PostgreSQL, artifacts on S3/LocalStack
+- **MLflow**: Backend store on PostgreSQL, artifacts on S3/MinIO
 - **Prefect**: API-based deployment with work pool management
 - **GitHub Actions**: Multi-stage pipeline with security and build phases
 

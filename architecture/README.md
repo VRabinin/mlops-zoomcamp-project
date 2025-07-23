@@ -56,7 +56,7 @@ The solution follows a microservices-based architecture that supports both local
 
 ### Local Development Environment
 - **Docker**: Containerization for consistent environments
-- **LocalStack**: Local AWS services emulation
+- **MinIO**: S3-compatible object storage for development
 - **Docker Compose**: Multi-service orchestration
 
 ### Production Environment
@@ -114,7 +114,7 @@ The solution follows a microservices-based architecture that supports both local
 
 ### Local Development
 1. Start Docker services with Docker Compose
-2. Deploy LocalStack for AWS service emulation
+2. Deploy MinIO for S3-compatible object storage
 3. Use Docker containers for service orchestration
 4. Connect to local databases and storage
 

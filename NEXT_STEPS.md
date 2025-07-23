@@ -11,8 +11,15 @@
 - [x] **✅ Prefect Integration**: **FULLY OPERATIONAL** - Workflow orchestration with 11 management commands
 - [x] **✅ Feature Engineering**: **FULLY OPERATIONAL** - 23 engineered features from CRM data
 - [x] **✅ Data Validation**: **FULLY OPERATIONAL** - Schema validation with quality scoring (0.93)
-- [x] **Development Environment**: Docker Compose for local services (PostgreSQL, Redis, LocalStack)
+- [x] **Development Environment**: Docker Compose for local services (PostgreSQL, Redis, MinIO)
 - [x] **CI/CD Foundation**: GitHub Actions workflows
+
+### ✅ **Recent Infrastructure Migration: LocalStack → MinIO**
+- **Completed**: Full migration from LocalStack to MinIO for S3-compatible storage
+- **Benefits**: Lighter resource usage, better Docker integration, simpler configuration
+- **Storage**: MLflow artifacts, Prefect flows, and data lake all using MinIO S3
+- **Access**: MinIO Web UI available at http://localhost:9001 (minioadmin/minioadmin)
+- **Commands**: New Makefile commands for MinIO management (`make minio-*`)
 
 ### ✅ **Major Achievement: Prefect 3.x Pipeline Operational**
 - **Data Volume**: Successfully processing 8,800+ CRM records
@@ -139,7 +146,7 @@ src/models/                   # 🚧 NEXT PHASE
 - ✅ Data Pipeline: 8,800 CRM records with 23 features ready for ML
 - ✅ MLFlow: Experiment tracking backend operational
 - ✅ Prefect 3.x: Workflow orchestration ready for training flows
-- ✅ Docker Services: PostgreSQL, Redis, LocalStack operational
+- ✅ Docker Services: PostgreSQL, Redis, MinIO operational
 
 ## 📋 Development Priorities by Phase
 
