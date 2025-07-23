@@ -71,7 +71,7 @@ workspace "CRM Sales Opportunities MLOps Platform" "An end-to-end machine learni
                 alb = component "Application Load Balancer" "Load balancer for web traffic"
             }
             
-            localInfra = container "Local Infrastructure" "Development and testing environment" "Docker, LocalStack" {
+            localInfra = container "Local Infrastructure" "Development and testing environment" "Docker, MinIO" {
                 dockerServices = component "Docker Services" "Containerized services for local development"
                 localstack = component "LocalStack" "Local AWS services emulation"
             }

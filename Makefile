@@ -23,30 +23,6 @@ setup: ## Set up development environment
 	@echo "✅ Virtual environment created at .venv/"
 	@echo "To activate: source .venv/bin/activate"
 
-#install: ## Install Python dependencies (requires activated virtual environment)
-#	@echo "Installing dependencies..."
-#	@if [ -z "$$VIRTUAL_ENV" ]; then \
-#		echo "⚠️  Warning: No virtual environment detected."; \
-#		echo "   Please activate your virtual environment first: source .venv/bin/activate"; \
-#		echo "   Or use 'make dev-setup' for complete setup."; \
-#		exit 1; \
-#	fi
-#	pip install --upgrade pip
-#	pip install -r requirements.txt
-#	@echo "Dependencies installed successfully!"
-
-#install-dev: ## Install development dependencies (requires activated virtual environment)
-#	@echo "Installing development dependencies..."
-#	@if [ -z "$$VIRTUAL_ENV" ]; then \
-#		echo "⚠️  Warning: No virtual environment detected."; \
-#		echo "   Please activate your virtual environment first: source .venv/bin/activate"; \
-#		exit 1; \
-#	fi
-#	pip install --upgrade pip
-#	pip install -r requirements.txt
-#	pip install pytest pytest-cov black isort flake8 mypy
-#	@echo "Development dependencies installed successfully!"
-
 install-venv: ## Install dependencies directly in .venv (no activation required)
 	@echo "Installing dependencies in virtual environment..."
 	@if [ ! -d ".venv" ]; then \
@@ -64,7 +40,7 @@ create-dirs: ## Create necessary directories
 	mkdir -p data/raw data/processed data/features
 	mkdir -p models artifacts logs
 	mkdir -p reports #notebooks
-	mkdir -p app_data/postgres app_data/localstack
+	mkdir -p app_data/postgres app_data/minio
 	touch data/raw/.gitkeep data/processed/.gitkeep data/features/.gitkeep
 
 env-file: ## Create environment file from template
@@ -99,6 +75,40 @@ data-process: ## Process raw data into features
 	python -m src.data.preprocessing.feature_engineering
 
 data-pipeline: data-download data-validate data-process ## Run complete data pipeline
+
+# MinIO S3 Management
+minio-ui: ## Open MinIO web console
+	@echo "MinIO Console available at: http://localhost:9001"
+	@echo "Username: minioadmin"
+	@echo "Password: minioadmin"
+
+minio-buckets: ## List all MinIO buckets
+	@echo "Listing MinIO buckets..."
+	@docker run --rm --network mlops-zoomcamp-project_mlops-network \
+		--entrypoint /bin/sh \
+		minio/mc:RELEASE.2024-07-11T18-01-28Z \
+		-c "mc alias set minio http://minio:9000 minioadmin minioadmin && mc ls minio/"
+
+minio-list-data: ## List contents of data-lake bucket
+	@echo "Listing data-lake bucket contents..."
+	@docker run --rm --network mlops-zoomcamp-project_mlops-network \
+		--entrypoint /bin/sh \
+		minio/mc:RELEASE.2024-07-11T18-01-28Z \
+		-c "mc alias set minio http://minio:9000 minioadmin minioadmin && mc ls minio/data-lake/ --recursive"
+
+minio-list-mlflow: ## List MLflow artifacts
+	@echo "Listing MLflow artifacts..."
+	@docker run --rm --network mlops-zoomcamp-project_mlops-network \
+		--entrypoint /bin/sh \
+		minio/mc:RELEASE.2024-07-11T18-01-28Z \
+		-c "mc alias set minio http://minio:9000 minioadmin minioadmin && mc ls minio/mlflow-artifacts/ --recursive"
+
+minio-status: ## Check MinIO status
+	@echo "Checking MinIO status..."
+	@docker run --rm --network mlops-zoomcamp-project_mlops-network \
+		--entrypoint /bin/sh \
+		minio/mc:RELEASE.2024-07-11T18-01-28Z \
+		-c "mc alias set minio http://minio:9000 minioadmin minioadmin && mc admin info minio"
 
 
 # ================= Validated till here ================
@@ -139,10 +149,26 @@ mlflow-server: ## Start MLFlow tracking server
 
 
 # Prefect
-prefect-deploy-crm: ## Deploy CRM ingestion flow
-	@echo "Deploying CRM ingestion flow..."
+prefect-deploy-crm: ## Deploy CRM ingestion flow with S3 storage
+	@echo "Deploying CRM ingestion flow with S3 storage..."
 	@export PREFECT_API_URL=http://localhost:4200/api && \
 	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python src/pipelines/deploy_crm_pipeline.py
+
+prefect-deploy-s3: ## Deploy CRM flow with S3 storage (MinIO)
+	@echo "Deploying CRM flow with S3 storage (MinIO)..."
+	@echo "Ensuring MinIO S3 bucket exists..."
+	@docker exec mlops-minio-setup mc mb minio/data-lake --ignore-existing 2>/dev/null || true
+	@export PREFECT_API_URL=http://localhost:4200/api && \
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python -c "\
+from src.pipelines.deploy_crm_pipeline import deploy_with_s3_storage; \
+deploy_with_s3_storage()"
+
+prefect-deploy-simple-s3: ## Deploy CRM flow with simplified S3 setup
+	@echo "Deploying CRM flow with simplified S3 setup..."
+	@export PREFECT_API_URL=http://localhost:4200/api && \
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python -c "\
+from src.pipelines.deploy_crm_pipeline import deploy_with_simple_s3; \
+deploy_with_simple_s3()"
 
 prefect-run-crm: ## Run CRM ingestion flow directly (for testing)
 	@echo "Running CRM ingestion flow locally..."
@@ -168,7 +194,9 @@ prefect-ui: ## Open Prefect UI in browser
 
 prefect-help: ## Show all Prefect commands
 	@echo "=== Available Prefect Commands ==="
-	@echo "prefect-deploy-crm:      Deploy CRM flow to server"
+	@echo "prefect-deploy-crm:      Deploy CRM flow with S3 storage"
+	@echo "prefect-deploy-s3:       Deploy CRM flow with MinIO S3 storage"
+	@echo "prefect-deploy-simple-s3: Deploy CRM flow with simple S3"
 	@echo "prefect-run-crm:         Run CRM ingestion flow directly"	
 	@echo "prefect-deployments:     List all deployments"
 	@echo "prefect-flows:           List recent flow runs"
@@ -176,6 +204,13 @@ prefect-help: ## Show all Prefect commands
 	@echo "prefect-status-all:      Show comprehensive status"
 	@echo "prefect-ui:              Open Prefect UI in browser"
 	@echo "prefect-help:            Show this help message"
+	@echo ""
+	@echo "=== MinIO S3 Storage ==="
+	@echo "minio-ui:                Open MinIO web console"
+	@echo "minio-buckets:           List all MinIO buckets"
+	@echo "minio-list-data:         List data-lake bucket contents"
+	@echo "minio-list-mlflow:       List MLflow artifacts"
+	@echo "minio-status:            Check MinIO service status"
 
 prefect-status-all: ## Show comprehensive Prefect status
 	@echo "=== Prefect Status ==="

@@ -1,0 +1,28 @@
+deployments:
+- description: CRM sales opportunities data ingestion pipeline (MinIO S3 storage)
+  entrypoint: src/pipelines/run_crm_pipeline.py:crm_data_ingestion_flow
+  name: crm-data-ingestion
+  parameters: {}
+  schedule:
+    interval: 3600
+  tags:
+  - data
+  - ingestion
+  - crm
+  - etl
+  - s3
+  - minio
+  work_pool:
+    name: default-agent-pool
+name: crm-mlops-project
+prefect-version: 3.4.10
+pull:
+- prefect_aws.deployments.steps.pull_from_s3:
+    bucket: data-lake
+    client_parameters:
+      endpoint_url: http://minio:9000
+      region_name: us-east-1
+    credentials:
+      aws_access_key_id: minioadmin
+      aws_secret_access_key: minioadmin
+    folder: prefect-flows/

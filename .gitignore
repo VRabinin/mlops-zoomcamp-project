@@ -249,9 +249,9 @@ terraform.tfvars.json
 nomad.d/
 nomad_data/
 
-# LocalStack
-.localstack/
-localstack_data/
+# MinIO
+minio_data/
+app_data/minio/
 
 # Docker
 docker_data/

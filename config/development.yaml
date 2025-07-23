@@ -13,6 +13,9 @@ mlflow:
   experiment_name: "crm-sales-prediction"
   artifact_location: "mlruns"
   model_registry_name: "crm-sales-model"
+  s3_endpoint_url: "http://localhost:9000"
+  s3_access_key: "minioadmin"
+  s3_secret_key: "minioadmin"
 
 # Prefect configuration
 prefect:
@@ -48,3 +51,12 @@ log_level: "INFO"
 # Infrastructure
 database_url: "postgresql://localhost:5432/mlops"
 redis_url: "redis://localhost:6379"
+minio:
+  endpoint_url: "http://localhost:9000"
+  access_key: "minioadmin"
+  secret_key: "minioadmin"
+  region: "us-east-1"
+  buckets:
+    mlflow_artifacts: "mlflow-artifacts"
+    data_lake: "data-lake"
+    model_artifacts: "model-artifacts"
