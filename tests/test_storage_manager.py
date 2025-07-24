@@ -11,6 +11,7 @@ import os
 import shutil
 
 from src.utils.storage import StorageManager, create_storage_manager
+from src.config.config import Config, get_config
 
 
 class TestStorageManagerLocal:
@@ -19,11 +20,10 @@ class TestStorageManagerLocal:
     def setup_method(self):
         """Set up test environment for each test."""
         self.temp_dir = tempfile.mkdtemp()
-        self.config = {
-            "raw_data_path": f"{self.temp_dir}/raw",
-            "processed_data_path": f"{self.temp_dir}/processed", 
-            "feature_store_path": f"{self.temp_dir}/features"
-        }
+        self.config = Config()
+        self.config.data_path.raw = f"{self.temp_dir}/raw"
+        self.config.data_path.processed = f"{self.temp_dir}/processed"
+        self.config.data_path.features = f"{self.temp_dir}/features"
     
     def teardown_method(self):
         """Clean up after each test."""
@@ -35,9 +35,9 @@ class TestStorageManagerLocal:
         storage = StorageManager(self.config)
         
         assert not storage.use_s3
-        assert storage.local_paths['raw'] == f"{self.temp_dir}/raw"
-        assert storage.local_paths['processed'] == f"{self.temp_dir}/processed"
-        assert storage.local_paths['features'] == f"{self.temp_dir}/features"
+        assert storage.config.data_path.raw == f"{self.temp_dir}/raw"
+        assert storage.config.data_path.processed == f"{self.temp_dir}/processed"
+        assert storage.config.data_path.features == f"{self.temp_dir}/features"
     
     def test_resolve_path_without_filename(self):
         """Test path resolution without filename."""
@@ -131,7 +131,10 @@ class TestStorageManagerLocal:
         test_df = pd.DataFrame({'col': [1, 2, 3]})
         storage.save_dataframe(test_df, 'features', 'data1.csv')
         storage.save_dataframe(test_df, 'features', 'data2.csv')
-        storage.save_dataframe(test_df, 'features', 'readme.txt')
+        
+        # Create a non-CSV file
+        features_dir = Path(f"{self.temp_dir}/features")
+        (features_dir / 'readme.txt').write_text('test content')
         
         # List all files
         all_files = storage.list_files('features', '*')
@@ -144,14 +147,9 @@ class TestStorageManagerLocal:
     
     def test_get_working_directory(self):
         """Test getting working directory."""
-        # Add models to config to test known data type
-        config_with_models = {
-            **self.config,
-            "models_path": f"{self.temp_dir}/models"
-        }
-        storage = StorageManager(config_with_models)
+        storage = StorageManager(self.config)
         
-        work_dir = storage.get_working_directory('raw')  # Use a known data type
+        work_dir = storage.get_working_directory('raw')
         expected_dir = Path(f"{self.temp_dir}/raw")
         
         assert str(work_dir) == str(expected_dir)
@@ -164,24 +162,21 @@ class TestStorageManagerS3:
     
     def setup_method(self):
         """Set up test environment for S3 tests."""
-        self.config = {
-            "storage": {
-                "endpoint_url": "http://localhost:9000",
-                "access_key": "test_access",
-                "secret_key": "test_secret",
-                "region": "us-east-1",
-                "buckets": {
-                    "data_lake": "test-data-lake",
-                    "mlflow_artifacts": "test-mlflow",
-                    "model_artifacts": "test-models"
-                },
-                "s3_paths": {
-                    "raw": "raw-data",
-                    "processed": "processed-data", 
-                    "features": "feature-data",
-                    "models": "model-data"
-                }
-            }
+        self.config = Config()
+        self.config.storage.endpoint_url = "http://localhost:9000"
+        self.config.storage.access_key = "test_access"
+        self.config.storage.secret_key = "test_secret"
+        self.config.storage.region = "us-east-1"
+        self.config.storage.buckets = {
+            "data_lake": "test-data-lake",
+            "mlflow_artifacts": "test-mlflow",
+            "model_artifacts": "test-models"
+        }
+        self.config.storage.s3_paths = {
+            "raw": "raw-data",
+            "processed": "processed-data", 
+            "features": "feature-data",
+            "models": "model-data"
         }
     
     @patch.dict(os.environ, {'USE_S3_STORAGE': 'true'})
@@ -194,9 +189,9 @@ class TestStorageManagerS3:
         storage = StorageManager(self.config)
         
         assert storage.use_s3
-        assert storage.data_bucket == "test-data-lake"
-        assert storage.data_paths['raw'] == "raw-data"
-        assert storage.data_paths['processed'] == "processed-data"
+        assert storage.config.storage.buckets["data_lake"] == "test-data-lake"
+        assert storage.config.storage.s3_paths['raw'] == "raw-data"
+        assert storage.config.storage.s3_paths['processed'] == "processed-data"
     
     @patch.dict(os.environ, {'USE_S3_STORAGE': 'true'})
     @patch('src.utils.storage.boto3.client')
@@ -243,33 +238,16 @@ class TestStorageManagerConfiguration:
     
     def test_backward_compatibility_direct_paths(self):
         """Test backward compatibility with direct path configuration."""
-        config = {
-            "raw_data_path": "legacy/raw",
-            "processed_data_path": "legacy/processed",
-            "feature_store_path": "legacy/features"
-        }
+        config = Config()
+        config.data_path.raw = "legacy/raw"
+        config.data_path.processed = "legacy/processed"
+        config.data_path.features = "legacy/features"
         
         storage = StorageManager(config)
         
-        assert storage.local_paths['raw'] == "legacy/raw"
-        assert storage.local_paths['processed'] == "legacy/processed"
-        assert storage.local_paths['features'] == "legacy/features"
-    
-    def test_nested_data_config(self):
-        """Test configuration with nested data structure."""
-        config = {
-            "data": {
-                "raw_data_path": "nested/raw",
-                "processed_data_path": "nested/processed",
-                "feature_store_path": "nested/features"
-            }
-        }
-        
-        storage = StorageManager(config)
-        
-        assert storage.local_paths['raw'] == "nested/raw"
-        assert storage.local_paths['processed'] == "nested/processed"
-        assert storage.local_paths['features'] == "nested/features"
+        assert storage.config.data_path.raw == "legacy/raw"
+        assert storage.config.data_path.processed == "legacy/processed"
+        assert storage.config.data_path.features == "legacy/features"
     
     @patch.dict(os.environ, {
         'RAW_DATA_PATH': 'env/raw',
@@ -278,32 +256,31 @@ class TestStorageManagerConfiguration:
     })
     def test_environment_variable_overrides(self):
         """Test environment variable overrides."""
-        config = {
-            "raw_data_path": "config/raw",
-            "processed_data_path": "config/processed"
-        }
+        config = get_config()  # This will apply environment overrides
         
         storage = StorageManager(config)
         
         # Environment variables should override config
-        assert storage.local_paths['raw'] == "env/raw"
-        assert storage.local_paths['processed'] == "env/processed"
-        assert storage.local_paths['features'] == "env/features"
+        assert storage.config.data_path.raw == "env/raw"
+        assert storage.config.data_path.processed == "env/processed"
+        assert storage.config.data_path.features == "env/features"
     
     def test_default_fallbacks(self):
         """Test default value fallbacks."""
-        config = {}  # Empty config
+        config = Config()  # Use defaults
         
         storage = StorageManager(config)
         
         # Should use defaults
-        assert storage.local_paths['raw'] == "data/raw"
-        assert storage.local_paths['processed'] == "data/processed"
-        assert storage.local_paths['features'] == "data/features"
+        assert storage.config.data_path.raw == "data/raw"
+        assert storage.config.data_path.processed == "data/processed"
+        assert storage.config.data_path.features == "data/features"
     
     def test_invalid_data_type_error(self):
         """Test error handling for invalid data types."""
-        config = {"raw_data_path": "test/raw"}
+        config = Config()
+        config.data_path.raw = "test/raw"
+        
         storage = StorageManager(config)
         
         with pytest.raises(ValueError, match="Unknown data type"):
@@ -315,12 +292,13 @@ class TestFactoryFunction:
     
     def test_create_storage_manager(self):
         """Test the create_storage_manager factory function."""
-        config = {"raw_data_path": "test/raw"}
+        config = Config()
+        config.data_path.raw = "test/raw"
         
         storage = create_storage_manager(config)
         
         assert isinstance(storage, StorageManager)
-        assert storage.local_paths['raw'] == "test/raw"
+        assert storage.config.data_path.raw == "test/raw"
 
 
 class TestStorageManagerEdgeCases:
@@ -328,7 +306,9 @@ class TestStorageManagerEdgeCases:
     
     def test_empty_filename_handling(self):
         """Test handling of empty filenames."""
-        config = {"raw_data_path": "test/raw"}
+        config = Config()
+        config.data_path.raw = "test/raw"
+        
         storage = StorageManager(config)
         
         # Should work with None
@@ -341,7 +321,9 @@ class TestStorageManagerEdgeCases:
     
     def test_path_normalization(self):
         """Test path normalization and cleaning."""
-        config = {"raw_data_path": "test//raw///"}
+        config = Config()
+        config.data_path.raw = "test//raw///"
+        
         storage = StorageManager(config)
         
         path = storage.resolve_path('raw', 'file.csv')

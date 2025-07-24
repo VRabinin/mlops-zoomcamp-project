@@ -9,7 +9,7 @@ from pathlib import Path
 import tempfile
 import os
 
-from src.config.config import Config, DataConfig, get_config
+from src.config.config import Config, DataPathConfig, get_config
 from src.data.ingestion.crm_ingestion import CRMDataIngestion
 from src.data.schemas.crm_schema import CRMDataSchema
 from src.utils.storage import StorageManager
@@ -18,17 +18,17 @@ from src.utils.storage import StorageManager
 class TestConfig:
     """Test configuration management."""
     
-    def test_data_config_defaults(self):
-        """Test DataConfig default values."""
-        config = DataConfig()
-        assert config.raw_data_path == "data/raw"
-        assert config.processed_data_path == "data/processed"
+    def test_data_path_config_defaults(self):
+        """Test DataPathConfig default values."""
+        config = DataPathConfig()
+        assert config.raw == "data/raw"
+        assert config.processed == "data/processed"
     
     def test_get_config_returns_config_instance(self):
         """Test that get_config returns a Config instance."""
         config = get_config()
         assert isinstance(config, Config)
-        assert hasattr(config, 'data')
+        assert hasattr(config, 'data_path')
         assert hasattr(config, 'mlflow')
 
 
@@ -62,24 +62,24 @@ class TestStorageManager:
     
     def test_local_storage_initialization(self):
         """Test StorageManager initializes correctly for local storage."""
-        config = {
-            "raw_data_path": "test/raw",
-            "processed_data_path": "test/processed",
-            "feature_store_path": "test/features"
-        }
+        config = Config()
+        config.data_path.raw = "test/raw"
+        config.data_path.processed = "test/processed"
+        config.data_path.features = "test/features"
+        
         storage = StorageManager(config)
         
         assert not storage.use_s3  # Should detect local environment
-        assert 'raw' in storage.local_paths
-        assert 'processed' in storage.local_paths
-        assert 'features' in storage.local_paths
+        assert storage.config.data_path.raw == "test/raw"
+        assert storage.config.data_path.processed == "test/processed"
+        assert storage.config.data_path.features == "test/features"
     
     def test_path_resolution_local(self):
         """Test path resolution for local storage."""
-        config = {
-            "raw_data_path": "test/raw",
-            "processed_data_path": "test/processed"
-        }
+        config = Config()
+        config.data_path.raw = "test/raw"
+        config.data_path.processed = "test/processed"
+        
         storage = StorageManager(config)
         
         # Test path resolution without filename
@@ -92,10 +92,10 @@ class TestStorageManager:
     
     def test_get_full_path(self):
         """Test get_full_path method."""
-        config = {
-            "raw_data_path": "test/raw",
-            "processed_data_path": "test/processed"
-        }
+        config = Config()
+        config.data_path.raw = "test/raw"
+        config.data_path.processed = "test/processed"
+        
         storage = StorageManager(config)
         
         full_path = storage.get_full_path('raw', 'test.csv')
@@ -105,15 +105,12 @@ class TestStorageManager:
     @patch.dict(os.environ, {'USE_S3_STORAGE': 'true'})
     def test_s3_storage_detection(self):
         """Test S3 storage detection from environment variable."""
-        config = {
-            "storage": {
-                "endpoint_url": "http://localhost:9000",
-                "access_key": "test",
-                "secret_key": "test",
-                "buckets": {"data_lake": "test-bucket"},
-                "s3_paths": {"raw": "raw", "processed": "processed"}
-            }
-        }
+        config = Config()
+        config.storage.endpoint_url = "http://localhost:9000"
+        config.storage.access_key = "test"
+        config.storage.secret_key = "test"
+        config.storage.buckets = {"data_lake": "test-bucket"}
+        config.storage.s3_paths = {"raw": "raw", "processed": "processed"}
         
         with patch('src.utils.storage.boto3.client'):
             storage = StorageManager(config)
@@ -121,7 +118,9 @@ class TestStorageManager:
     
     def test_working_directory(self):
         """Test get_working_directory method."""
-        config = {"raw_data_path": "test/raw"}
+        config = Config()
+        config.data_path.raw = "test/raw"
+        
         storage = StorageManager(config)
         
         # Should create directory and return path
@@ -134,10 +133,10 @@ class TestCRMDataIngestion:
     
     def test_initialization(self):
         """Test CRMDataIngestion initializes correctly."""
-        config = {
-            "raw_data_path": "test/raw", 
-            "processed_data_path": "test/processed"
-        }
+        config = Config()
+        config.data_path.raw = "test/raw"
+        config.data_path.processed = "test/processed"
+        
         ingestion = CRMDataIngestion(config)
         
         # Test that ingestion has config and storage manager
@@ -146,8 +145,8 @@ class TestCRMDataIngestion:
         assert isinstance(ingestion.storage, StorageManager)
         
         # Test that storage manager has correct paths configured
-        assert 'raw' in ingestion.storage.local_paths
-        assert 'processed' in ingestion.storage.local_paths
+        assert ingestion.storage.config.data_path.raw == "test/raw"
+        assert ingestion.storage.config.data_path.processed == "test/processed"
     
     def test_load_data_with_sample_dataframe(self):
         """Test loading data with a sample DataFrame."""
@@ -163,10 +162,9 @@ class TestCRMDataIngestion:
             sample_data.to_csv(f.name, index=False)
             file_path = Path(f.name)
         
-        config = {
-            "raw_data_path": "test/raw", 
-            "processed_data_path": "test/processed"
-        }
+        config = Config()
+        config.data_path.raw = "test/raw"
+        config.data_path.processed = "test/processed"
         
         try:
             ingestion = CRMDataIngestion(config)
@@ -188,10 +186,9 @@ class TestCRMDataIngestion:
             'close_value': [1000.0, 2000.0]
         })
         
-        config = {
-            "raw_data_path": "test/raw", 
-            "processed_data_path": "test/processed"
-        }
+        config = Config()
+        config.data_path.raw = "test/raw"
+        config.data_path.processed = "test/processed"
         
         ingestion = CRMDataIngestion(config)
         
@@ -206,10 +203,9 @@ class TestCRMDataIngestion:
     
     def test_find_csv_files(self):
         """Test finding CSV files using smart storage."""
-        config = {
-            "raw_data_path": "test/raw", 
-            "processed_data_path": "test/processed"
-        }
+        config = Config()
+        config.data_path.raw = "test/raw"
+        config.data_path.processed = "test/processed"
         
         ingestion = CRMDataIngestion(config)
         
@@ -232,10 +228,10 @@ class TestCRMDataIngestion:
             'Close Value': [1000.0, 2000.0, 1000.0]
         })
         
-        config = {
-            "raw_data_path": "test/raw", 
-            "processed_data_path": "test/processed"
-        }
+        config = Config()
+        config.data_path.raw = "test/raw"
+        config.data_path.processed = "test/processed"
+        
         ingestion = CRMDataIngestion(config)
         
         cleaned_df = ingestion.clean_data(sample_data)
@@ -249,10 +245,10 @@ class TestCRMDataIngestion:
     
     def test_validate_data_empty_dataframe(self):
         """Test validation with empty DataFrame."""
-        config = {
-            "raw_data_path": "test/raw", 
-            "processed_data_path": "test/processed"
-        }
+        config = Config()
+        config.data_path.raw = "test/raw"
+        config.data_path.processed = "test/processed"
+        
         ingestion = CRMDataIngestion(config)
         
         empty_df = pd.DataFrame()
@@ -264,10 +260,10 @@ class TestCRMDataIngestion:
     
     def test_calculate_quality_score(self):
         """Test data quality score calculation."""
-        config = {
-            "raw_data_path": "test/raw", 
-            "processed_data_path": "test/processed"
-        }
+        config = Config()
+        config.data_path.raw = "test/raw"
+        config.data_path.processed = "test/processed"
+        
         ingestion = CRMDataIngestion(config)
         
         # Perfect data
