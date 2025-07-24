@@ -7,10 +7,12 @@ import pandas as pd
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 import tempfile
+import os
 
 from src.config.config import Config, DataConfig, get_config
 from src.data.ingestion.crm_ingestion import CRMDataIngestion
 from src.data.schemas.crm_schema import CRMDataSchema
+from src.utils.storage import StorageManager
 
 
 class TestConfig:
@@ -55,15 +57,97 @@ class TestCRMDataSchema:
         assert len(features) > 0
 
 
+class TestStorageManager:
+    """Test StorageManager functionality."""
+    
+    def test_local_storage_initialization(self):
+        """Test StorageManager initializes correctly for local storage."""
+        config = {
+            "raw_data_path": "test/raw",
+            "processed_data_path": "test/processed",
+            "feature_store_path": "test/features"
+        }
+        storage = StorageManager(config)
+        
+        assert not storage.use_s3  # Should detect local environment
+        assert 'raw' in storage.local_paths
+        assert 'processed' in storage.local_paths
+        assert 'features' in storage.local_paths
+    
+    def test_path_resolution_local(self):
+        """Test path resolution for local storage."""
+        config = {
+            "raw_data_path": "test/raw",
+            "processed_data_path": "test/processed"
+        }
+        storage = StorageManager(config)
+        
+        # Test path resolution without filename
+        raw_path = storage.resolve_path('raw')
+        assert str(raw_path) == "test/raw"
+        
+        # Test path resolution with filename
+        file_path = storage.resolve_path('raw', 'data.csv')
+        assert str(file_path).endswith('test/raw/data.csv')
+    
+    def test_get_full_path(self):
+        """Test get_full_path method."""
+        config = {
+            "raw_data_path": "test/raw",
+            "processed_data_path": "test/processed"
+        }
+        storage = StorageManager(config)
+        
+        full_path = storage.get_full_path('raw', 'test.csv')
+        assert full_path.endswith('test/raw/test.csv')
+        assert os.path.isabs(full_path)  # Should be absolute path
+    
+    @patch.dict(os.environ, {'USE_S3_STORAGE': 'true'})
+    def test_s3_storage_detection(self):
+        """Test S3 storage detection from environment variable."""
+        config = {
+            "storage": {
+                "endpoint_url": "http://localhost:9000",
+                "access_key": "test",
+                "secret_key": "test",
+                "buckets": {"data_lake": "test-bucket"},
+                "s3_paths": {"raw": "raw", "processed": "processed"}
+            }
+        }
+        
+        with patch('src.utils.storage.boto3.client'):
+            storage = StorageManager(config)
+            assert storage.use_s3
+    
+    def test_working_directory(self):
+        """Test get_working_directory method."""
+        config = {"raw_data_path": "test/raw"}
+        storage = StorageManager(config)
+        
+        # Should create directory and return path
+        work_dir = storage.get_working_directory('raw')
+        assert str(work_dir) == "test/raw"
+
+
 class TestCRMDataIngestion:
     """Test CRM data ingestion functionality."""
     
     def test_initialization(self):
         """Test CRMDataIngestion initializes correctly."""
-        config = {"raw_data_path": "test/raw", "processed_data_path": "test/processed"}
+        config = {
+            "raw_data_path": "test/raw", 
+            "processed_data_path": "test/processed"
+        }
         ingestion = CRMDataIngestion(config)
+        
+        # Test that ingestion has config and storage manager
         assert ingestion.config == config
-        assert str(ingestion.raw_data_path).endswith("test/raw")
+        assert hasattr(ingestion, 'storage')
+        assert isinstance(ingestion.storage, StorageManager)
+        
+        # Test that storage manager has correct paths configured
+        assert 'raw' in ingestion.storage.local_paths
+        assert 'processed' in ingestion.storage.local_paths
     
     def test_load_data_with_sample_dataframe(self):
         """Test loading data with a sample DataFrame."""
@@ -79,16 +163,65 @@ class TestCRMDataIngestion:
             sample_data.to_csv(f.name, index=False)
             file_path = Path(f.name)
         
-        config = {"raw_data_path": "test/raw", "processed_data_path": "test/processed"}
-        ingestion = CRMDataIngestion(config)
+        config = {
+            "raw_data_path": "test/raw", 
+            "processed_data_path": "test/processed"
+        }
         
         try:
-            df = ingestion.load_data(file_path)
-            assert len(df) == 2
-            assert 'opportunity_id' in df.columns
-            assert df['close_value'].sum() == 3000.0
+            ingestion = CRMDataIngestion(config)
+            
+            # Mock the smart storage loading to return our test data
+            with patch.object(ingestion.storage, 'load_dataframe', return_value=sample_data):
+                df = ingestion.load_data(file_path)
+                assert len(df) == 2
+                assert 'opportunity_id' in df.columns
+                assert df['close_value'].sum() == 3000.0
         finally:
             file_path.unlink()  # Clean up
+    
+    def test_save_processed_data(self):
+        """Test saving processed data using smart storage."""
+        sample_data = pd.DataFrame({
+            'opportunity_id': ['OPP001', 'OPP002'],
+            'sales_agent': ['Agent1', 'Agent2'],
+            'close_value': [1000.0, 2000.0]
+        })
+        
+        config = {
+            "raw_data_path": "test/raw", 
+            "processed_data_path": "test/processed"
+        }
+        
+        ingestion = CRMDataIngestion(config)
+        
+        # Mock the smart storage saving
+        expected_path = "/test/path/processed_data.csv"
+        with patch.object(ingestion.storage, 'save_dataframe', return_value=expected_path) as mock_save:
+            result_path = ingestion.save_processed_data(sample_data, "test_file.csv")
+            
+            # Verify save_dataframe was called with correct parameters
+            mock_save.assert_called_once_with(sample_data, 'processed', 'test_file.csv')
+            assert result_path == expected_path
+    
+    def test_find_csv_files(self):
+        """Test finding CSV files using smart storage."""
+        config = {
+            "raw_data_path": "test/raw", 
+            "processed_data_path": "test/processed"
+        }
+        
+        ingestion = CRMDataIngestion(config)
+        
+        # Mock the smart storage file listing
+        mock_files = ['sales_pipeline.csv', 'accounts.csv', 'data_dictionary.csv']
+        with patch.object(ingestion.storage, 'list_files', return_value=mock_files):
+            csv_files = ingestion.find_csv_files()
+            
+            # Should return Path objects
+            assert len(csv_files) == 3
+            assert all(isinstance(f, Path) for f in csv_files)
+            assert csv_files[0].name == 'sales_pipeline.csv'
     
     def test_clean_data(self):
         """Test data cleaning functionality."""
@@ -99,7 +232,10 @@ class TestCRMDataIngestion:
             'Close Value': [1000.0, 2000.0, 1000.0]
         })
         
-        config = {"raw_data_path": "test/raw", "processed_data_path": "test/processed"}
+        config = {
+            "raw_data_path": "test/raw", 
+            "processed_data_path": "test/processed"
+        }
         ingestion = CRMDataIngestion(config)
         
         cleaned_df = ingestion.clean_data(sample_data)
@@ -113,7 +249,10 @@ class TestCRMDataIngestion:
     
     def test_validate_data_empty_dataframe(self):
         """Test validation with empty DataFrame."""
-        config = {"raw_data_path": "test/raw", "processed_data_path": "test/processed"}
+        config = {
+            "raw_data_path": "test/raw", 
+            "processed_data_path": "test/processed"
+        }
         ingestion = CRMDataIngestion(config)
         
         empty_df = pd.DataFrame()
@@ -125,7 +264,10 @@ class TestCRMDataIngestion:
     
     def test_calculate_quality_score(self):
         """Test data quality score calculation."""
-        config = {"raw_data_path": "test/raw", "processed_data_path": "test/processed"}
+        config = {
+            "raw_data_path": "test/raw", 
+            "processed_data_path": "test/processed"
+        }
         ingestion = CRMDataIngestion(config)
         
         # Perfect data

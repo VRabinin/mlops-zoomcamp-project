@@ -2,7 +2,7 @@
 
 from .config import (
     Config,
-    DataConfig,
+    DataPathConfig,
     MLflowConfig,
     PrefectConfig,
     MonitoringConfig,

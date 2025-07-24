@@ -8,12 +8,12 @@ from typing import Dict, Any, Optional
 
 
 @dataclass
-class DataConfig:
+class DataPathConfig:
     """Data pipeline configuration."""
     # Local filesystem paths (for direct execution)
-    raw_data_path: str = "data/raw"
-    processed_data_path: str = "data/processed"
-    feature_store_path: str = "data/features"
+    raw: str = "data/raw"
+    processed: str = "data/processed"
+    features: str = "data/features"
 
 
 @dataclass
@@ -47,7 +47,8 @@ class StorageConfig:
     buckets: Dict[str, str] = field(default_factory=lambda: {
         "mlflow_artifacts": "mlflow-artifacts",
         "data_lake": "data-lake",
-        "model_artifacts": "model-artifacts"
+        "model_artifacts": "model-artifacts",
+        "configurations": "configurations"
     })
     # S3/MinIO paths for different data types (within buckets)
     s3_paths: Dict[str, str] = field(default_factory=lambda: {
@@ -72,7 +73,7 @@ class StorageConfig:
 @dataclass
 class Config:
     """Main configuration class."""
-    data: DataConfig = field(default_factory=DataConfig)
+    data_path: DataPathConfig = field(default_factory=DataPathConfig)
     mlflow: MLflowConfig = field(default_factory=MLflowConfig)
     prefect: PrefectConfig = field(default_factory=PrefectConfig)
     monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
@@ -132,16 +133,16 @@ def get_config(config_path: Optional[str] = None) -> Config:
     # Update with YAML values
     if yaml_config:
         # Data config
-        if 'data' in yaml_config:
-            for key, value in yaml_config['data'].items():
+        if 'data_path' in yaml_config:
+            for key, value in yaml_config['data_path'].items():
                 if key == 'local_paths' and isinstance(value, dict):
                     # Handle nested local_paths structure
                     for local_key, local_value in value.items():
-                        if hasattr(config.data, local_key):
-                            setattr(config.data, local_key, local_value)
-                elif hasattr(config.data, key):
-                    setattr(config.data, key, value)
-        
+                        if hasattr(config.data_path, local_key):
+                            setattr(config.data_path, local_key, local_value)
+                elif hasattr(config.data_path, key):
+                    setattr(config.data_path, key, value)
+
         # MLflow config
         if 'mlflow' in yaml_config:
             for key, value in yaml_config['mlflow'].items():
@@ -173,10 +174,10 @@ def get_config(config_path: Optional[str] = None) -> Config:
     # Override with environment variables (comprehensive for staging/production)
     
     # Data configuration overrides
-    config.data.raw_data_path = os.getenv('RAW_DATA_PATH', config.data.raw_data_path)
-    config.data.processed_data_path = os.getenv('PROCESSED_DATA_PATH', config.data.processed_data_path)
-    config.data.feature_store_path = os.getenv('FEATURE_STORE_PATH', config.data.feature_store_path)
-    
+    config.data_path.raw = os.getenv('RAW_DATA_PATH', config.data_path.raw)
+    config.data_path.processed = os.getenv('PROCESSED_DATA_PATH', config.data_path.processed)
+    config.data_path.features = os.getenv('FEATURE_STORE_PATH', config.data_path.features)
+
     # MLflow configuration overrides
     config.mlflow.tracking_uri = os.getenv('MLFLOW_TRACKING_URI', config.mlflow.tracking_uri)
     config.mlflow.artifact_location = os.getenv('MLFLOW_ARTIFACT_LOCATION', config.mlflow.artifact_location)

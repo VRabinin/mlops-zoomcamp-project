@@ -12,10 +12,10 @@ from src.config.config import get_config
 from src.data.ingestion.crm_ingestion import CRMDataIngestion
 from src.data.validation.run_validation import DataValidationOrchestrator
 from src.data.preprocessing.feature_engineering import CRMFeatureEngineer
-
+from src.config.config import Config as Config
 
 @task(name="download_crm_data", retries=2)
-def download_crm_data_task(config: Dict[str, Any]) -> Tuple[bool, str]:
+def download_crm_data_task(config: Config) -> Tuple[bool, str]:
     """Download CRM data from Kaggle.
     
     Args:
@@ -39,7 +39,7 @@ def download_crm_data_task(config: Dict[str, Any]) -> Tuple[bool, str]:
 
 
 @task(name="load_and_clean_data", retries=1)
-def load_and_clean_data_task(config: Dict[str, Any]) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
+def load_and_clean_data_task(config: Config) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
     """Load and clean CRM data.
     
     Args:
@@ -79,7 +79,7 @@ def load_and_clean_data_task(config: Dict[str, Any]) -> Tuple[bool, pd.DataFrame
 
 
 @task(name="validate_data_quality", retries=1)
-def validate_data_quality_task(df: pd.DataFrame, config: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
+def validate_data_quality_task(df: pd.DataFrame, config: Config) -> Tuple[bool, Dict[str, Any]]:
     """Validate data quality.
     
     Args:
@@ -117,7 +117,7 @@ def validate_data_quality_task(df: pd.DataFrame, config: Dict[str, Any]) -> Tupl
 
 
 @task(name="engineer_features", retries=1)
-def engineer_features_task(df: pd.DataFrame, config: Dict[str, Any]) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
+def engineer_features_task(df: pd.DataFrame, config: Config) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
     """Engineer features from the data.
     
     Args:
@@ -129,19 +129,11 @@ def engineer_features_task(df: pd.DataFrame, config: Dict[str, Any]) -> Tuple[bo
     """
     logger = get_run_logger()
     logger.info("Starting feature engineering")
-    
     try:
-        feature_engineer = CRMFeatureEngineer({
-            'target_column': 'deal_stage',
-            'test_size': 0.2,
-            'random_state': 42
-        })
-        
+        feature_engineer = CRMFeatureEngineer(config)
         df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df)
-        
         logger.info(f"🎯 Features created: {metadata['features_created']}")
         logger.info(f"📝 Feature columns: {len(feature_columns)}")
-        
         logger.info("✅ Feature engineering completed")
         return True, df_processed, metadata
         
@@ -151,7 +143,7 @@ def engineer_features_task(df: pd.DataFrame, config: Dict[str, Any]) -> Tuple[bo
 
 
 @task(name="save_processed_data", retries=1)
-def save_processed_data_task(df: pd.DataFrame, config: Dict[str, Any], suffix: str = "processed") -> Tuple[bool, str]:
+def save_processed_data_task(df: pd.DataFrame, config: Config, suffix: str = "processed") -> Tuple[bool, str]:
     """Save processed data to storage.
     
     Args:
@@ -169,26 +161,12 @@ def save_processed_data_task(df: pd.DataFrame, config: Dict[str, Any], suffix: s
         from src.utils.storage import StorageManager
         storage = StorageManager(config)
         
+        # Use smart storage method for consistent path handling
+        file_path = f"crm_{suffix}.csv"
         if suffix == "processed":
-            if storage.use_s3:
-                # Save to S3 with processed/ prefix
-                file_path = f"crm_data_processed.csv"
-                data_type = 'processed'
-            else:
-                # Save to local processed directory
-                output_path = Path(config['processed_data_path']) / "crm_data_processed.csv"
-                file_path = str(output_path)
-                saved_path = file_path
-                # For local storage, create directory and save directly
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                df.to_csv(output_path, index=False)
-                return True, saved_path
-        else:
-            # Use typed storage method for consistent path handling
-            file_path = f"crm_{suffix}.csv"
-            data_type = suffix
+            file_path = "crm_data_processed.csv"
         
-        saved_path = storage.save_dataframe_by_type(df, data_type, file_path)
+        saved_path = storage.save_dataframe(df, suffix, file_path)
         
         logger.info(f"💾 Data saved to: {saved_path}")
         return True, saved_path
@@ -206,64 +184,40 @@ def crm_data_ingestion_flow():
     
     # Get configuration
     config = get_config()
-    config_dict = {
-        'raw_data_path': config.data.raw_data_path,
-        'processed_data_path': config.data.processed_data_path,
-        'feature_store_path': config.data.feature_store_path,
-        'kaggle_dataset': 'innocentmfa/crm-sales-opportunities',
-        # New storage configuration
-        'storage': {
-            'endpoint_url': config.storage.endpoint_url,
-            'access_key': config.storage.access_key,
-            'secret_key': config.storage.secret_key,
-            'region': config.storage.region,
-            'buckets': config.storage.buckets,
-            's3_paths': config.storage.s3_paths,
-            'data_paths': config.storage.data_paths  # Keep for backward compatibility
-        },
- #       # Legacy minio config for backward compatibility
- #       'minio': {
- #           'endpoint_url': config.storage.endpoint_url,
- #           'access_key': config.storage.access_key,
- #           'secret_key': config.storage.secret_key,
- #           'region': config.storage.region,
- #           'buckets': config.storage.buckets
- #       }
-    }
     
     # Task 1: Download data
-    download_success, download_message = download_crm_data_task(config_dict)
+    download_success, download_message = download_crm_data_task(config)
     
     if not download_success:
         logger.error(f"Pipeline failed at download step: {download_message}")
         return {"status": "failed", "step": "download", "error": download_message}
     
     # Task 2: Load and clean data
-    load_success, df_cleaned, load_metadata = load_and_clean_data_task(config_dict)
+    load_success, df_cleaned, load_metadata = load_and_clean_data_task(config)
     
     if not load_success:
         logger.error(f"Pipeline failed at load step: {load_metadata.get('error', 'Unknown error')}")
         return {"status": "failed", "step": "load", "error": load_metadata.get('error')}
     
     # Task 3: Save cleaned data
-    save_success, save_path = save_processed_data_task(df_cleaned, config_dict, "processed")
+    save_success, save_path = save_processed_data_task(df_cleaned, config, "processed")
     
     if not save_success:
         logger.error(f"Pipeline failed at save step: {save_path}")
         return {"status": "failed", "step": "save", "error": save_path}
     
     # Task 4: Validate data quality
-    validation_passed, validation_results = validate_data_quality_task(df_cleaned, config_dict)
+    validation_passed, validation_results = validate_data_quality_task(df_cleaned, config)
     
     # Task 5: Engineer features
-    features_success, df_features, features_metadata = engineer_features_task(df_cleaned, config_dict)
+    features_success, df_features, features_metadata = engineer_features_task(df_cleaned, config)
     
     if not features_success:
         logger.error(f"Pipeline failed at feature engineering: {features_metadata.get('error', 'Unknown error')}")
         return {"status": "failed", "step": "features", "error": features_metadata.get('error')}
     
     # Task 6: Save features
-    features_save_success, features_path = save_processed_data_task(df_features, config_dict, "features")
+    features_save_success, features_path = save_processed_data_task(df_features, config, "features")
     
     if not features_save_success:
         logger.error(f"Pipeline failed at features save step: {features_path}")

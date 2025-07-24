@@ -1,10 +1,10 @@
 # Data configuration
-data:
+data_path:
   # Local filesystem paths (for direct execution)
   local_paths:
-    raw_data_path: "data/raw"
-    processed_data_path: "data/processed"
-    feature_store_path: "data/features"
+    raw: "data/raw"
+    processed: "data/processed"
+    feature: "data/features"
 
 # MLFlow configuration
 mlflow:
@@ -30,7 +30,7 @@ redis_url: "redis://localhost:6379"
 
 # Storage configuration
 storage:
-  endpoint_url: "http://localhost:9000"
+  endpoint_url: "http://mlops-minio:9000"
   access_key: "minioadmin"
   secret_key: "minioadmin"
   region: "us-east-1"

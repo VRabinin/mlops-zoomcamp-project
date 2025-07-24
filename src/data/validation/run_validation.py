@@ -6,20 +6,24 @@ from pathlib import Path
 from typing import Dict, Any, List, Tuple
 
 from src.data.schemas.crm_schema import CRMDataSchema
-
+from src.utils.storage import StorageManager
+from src.config.config import Config
 
 class DataValidationOrchestrator:
     """Orchestrate data validation processes."""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Config):
         """Initialize data validation orchestrator.
         
         Args:
             config: Configuration dictionary.
         """
         self.config = config
-        self.processed_data_path = Path(config.get('processed_data_path', 'data/processed'))
         self.schema = CRMDataSchema()
+        
+        # Initialize storage manager for consistent storage handling
+        self.storage = StorageManager(config)
+        
         self.logger = logging.getLogger(__name__)
     
     def load_processed_data(self, filename: str = "crm_data_processed.csv") -> pd.DataFrame:
@@ -31,13 +35,13 @@ class DataValidationOrchestrator:
         Returns:
             Loaded DataFrame.
         """
-        file_path = self.processed_data_path / filename
-        if not file_path.exists():
-            raise FileNotFoundError(f"Processed data file not found: {file_path}")
-        
-        df = pd.read_csv(file_path)
-        self.logger.info(f"Loaded processed data: {df.shape}")
-        return df
+        # Use smart storage to load data regardless of storage type
+        try:
+            df = self.storage.load_dataframe('processed', filename)
+            self.logger.info(f"Loaded processed data: {df.shape}")
+            return df
+        except Exception as e:
+            raise FileNotFoundError(f"Processed data file not found: {filename}. Error: {str(e)}")
     
     def run_comprehensive_validation(self, df: pd.DataFrame) -> Dict[str, Any]:
         """Run comprehensive data validation.
@@ -314,10 +318,9 @@ def main():
     # Get configuration
     config = get_config()
     
+    
     # Create validation orchestrator
-    validator = DataValidationOrchestrator({
-        'processed_data_path': config.data.processed_data_path
-    })
+    validator = DataValidationOrchestrator(config)
     
     try:
         # Load processed data

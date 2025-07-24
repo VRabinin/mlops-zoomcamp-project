@@ -5,26 +5,33 @@ import numpy as np
 from typing import Dict, Any, List, Tuple
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
+from src.config.config import Config
 import logging
+from pathlib import Path
+
+from src.utils.storage import StorageManager
 
 
 class CRMFeatureEngineer:
     """Feature engineering for CRM sales opportunities data."""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Config):
         """Initialize feature engineer.
         
         Args:
             config: Configuration dictionary.
         """
         self.config = config
-        self.target_column = config.get('target_column', 'deal_stage')
-        self.test_size = config.get('test_size', 0.2)
-        self.random_state = config.get('random_state', 42)
+        self.target_column = 'deal_stage'
+        self.test_size = 0.2
+        self.random_state = 42
         
         self.label_encoders = {}
         self.scaler = StandardScaler()
         self.feature_names = []
+        
+        # Initialize storage manager for consistent storage handling
+        self.storage = StorageManager(config)
         
         self.logger = logging.getLogger(__name__)
     
@@ -381,8 +388,6 @@ class CRMFeatureEngineer:
 def main():
     """Main function for running feature engineering."""
     from src.config.config import get_config
-    from src.utils.storage import StorageManager
-    from pathlib import Path
     
     # Setup logging
     logging.basicConfig(
@@ -393,55 +398,23 @@ def main():
     # Get configuration
     config = get_config()
     
-    # Create storage manager
-    config_dict = {
-        'minio': {
-            'endpoint_url': config.storage.endpoint_url,
-            'access_key': config.storage.access_key,
-            'secret_key': config.storage.secret_key,
-            'region': config.storage.region,
-            'buckets': config.storage.buckets
-        }
-    }
-    storage = StorageManager(config_dict)
-    
-    # Load processed data
-    if storage.use_s3:
-        processed_data_path = "processed/crm_data_processed.csv"
-        if not storage.exists(processed_data_path):
-            print(f"❌ Processed data file not found in S3: {processed_data_path}")
-            print("Please run data ingestion first: make data-pipeline-flow")
-            return 1
-        df = storage.load_dataframe(processed_data_path)
-    else:
-        processed_data_path = Path(config.data.processed_data_path) / "crm_data_processed.csv"
-        if not processed_data_path.exists():
-            print(f"❌ Processed data file not found: {processed_data_path}")
-            print("Please run data ingestion first: make data-download")
-            return 1
-        df = pd.read_csv(processed_data_path)
-    
-    print(f"📊 Loaded data: {df.shape}")
-    
     # Create feature engineer
-    feature_engineer = CRMFeatureEngineer({
-        'target_column': 'deal_stage',
-        'test_size': 0.2,
-        'random_state': 42
-    })
+    feature_engineer = CRMFeatureEngineer(config)
+    
+    # Load processed data using smart storage
+    try:
+        df = feature_engineer.storage.load_dataframe('processed', 'crm_data_processed.csv')
+        print(f"📊 Loaded data: {df.shape}")
+    except Exception as e:
+        print(f"❌ Failed to load processed data: {str(e)}")
+        print("Please run data ingestion first: make data-pipeline-flow")
+        return 1
     
     # Run feature engineering
     df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df)
     
-    # Save processed data with features
-    if storage.use_s3:
-        features_path = "features/crm_features.csv"
-        saved_path = storage.save_dataframe(df_processed, features_path)
-    else:
-        features_path = Path(config.data.feature_store_path) / "crm_features.csv"
-        features_path.parent.mkdir(parents=True, exist_ok=True)
-        df_processed.to_csv(features_path, index=False)
-        saved_path = str(features_path)
+    # Save processed data with features using smart storage
+    saved_path = feature_engineer.storage.save_dataframe(df_processed, 'features', 'crm_features.csv')
     
     print(f"✅ Feature engineering completed!")
     print(f"📊 Final shape: {df_processed.shape}")
