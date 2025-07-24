@@ -174,9 +174,6 @@ make prefect-help          # Show all Prefect commands
 # ✅ Docker Mode (Container execution): Uses S3/MinIO storage
 # ✅ Forced Mode: USE_S3_STORAGE=true environment variable
 
-# Test storage modes
-./test-storage-modes.sh
-
 # Local filesystem storage (development)
 python src/pipelines/run_crm_pipeline.py
 
@@ -189,7 +186,7 @@ USE_S3_STORAGE=true python src/pipelines/run_crm_pipeline.py
 
 **📦 Storage Locations:**
 - **Local Mode**: `./data/raw/`, `./data/processed/`, `./data/features/`
-- **S3 Mode**: `s3://data-lake/raw/`, `s3://data-lake/processed/`, `s3://data-lake/features/`
+- **S3 Mode**: `s3://data-lake/data/raw/`, `s3://data-lake/data/processed/`, `s3://data-lake/data/features/`
 - **MinIO Web UI**: http://localhost:9001 (minioadmin/minioadmin)
 
 **🎯 Benefits:**

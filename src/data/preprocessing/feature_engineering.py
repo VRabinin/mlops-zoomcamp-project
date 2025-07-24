@@ -18,9 +18,9 @@ class CRMFeatureEngineer:
             config: Configuration dictionary.
         """
         self.config = config
-        self.target_column = 'deal_stage'
-        self.test_size = 0.2
-        self.random_state = 42
+        self.target_column = config.get('target_column', 'deal_stage')
+        self.test_size = config.get('test_size', 0.2)
+        self.random_state = config.get('random_state', 42)
         
         self.label_encoders = {}
         self.scaler = StandardScaler()
@@ -396,11 +396,11 @@ def main():
     # Create storage manager
     config_dict = {
         'minio': {
-            'endpoint_url': config.minio.endpoint_url,
-            'access_key': config.minio.access_key,
-            'secret_key': config.minio.secret_key,
-            'region': config.minio.region,
-            'buckets': config.minio.buckets
+            'endpoint_url': config.storage.endpoint_url,
+            'access_key': config.storage.access_key,
+            'secret_key': config.storage.secret_key,
+            'region': config.storage.region,
+            'buckets': config.storage.buckets
         }
     }
     storage = StorageManager(config_dict)
@@ -425,9 +425,9 @@ def main():
     
     # Create feature engineer
     feature_engineer = CRMFeatureEngineer({
-        'target_column': config.model.target_column,
-        'test_size': config.model.test_size,
-        'random_state': config.model.random_state
+        'target_column': 'deal_stage',
+        'test_size': 0.2,
+        'random_state': 42
     })
     
     # Run feature engineering

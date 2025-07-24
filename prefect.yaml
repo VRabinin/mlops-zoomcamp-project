@@ -18,11 +18,11 @@ name: crm-mlops-project
 prefect-version: 3.4.10
 pull:
 - prefect_aws.deployments.steps.pull_from_s3:
-    bucket: ${DATA_LAKE_BUCKET:-data-lake}
+    bucket: data-lake
     client_parameters:
       endpoint_url: http://minio:9000
       region_name: us-east-1
     credentials:
       aws_access_key_id: minioadmin
       aws_secret_access_key: minioadmin
-    folder: ${S3_PREFECT_FLOWS_PATH:-prefect-flows}/
+    folder: prefect-flows/

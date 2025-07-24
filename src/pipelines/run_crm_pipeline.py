@@ -172,16 +172,23 @@ def save_processed_data_task(df: pd.DataFrame, config: Dict[str, Any], suffix: s
         if suffix == "processed":
             if storage.use_s3:
                 # Save to S3 with processed/ prefix
-                file_path = f"processed/crm_data_processed.csv"
+                file_path = f"crm_data_processed.csv"
+                data_type = 'processed'
             else:
                 # Save to local processed directory
                 output_path = Path(config['processed_data_path']) / "crm_data_processed.csv"
                 file_path = str(output_path)
+                saved_path = file_path
+                # For local storage, create directory and save directly
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                df.to_csv(output_path, index=False)
+                return True, saved_path
         else:
             # Use typed storage method for consistent path handling
             file_path = f"crm_{suffix}.csv"
+            data_type = suffix
         
-        saved_path = storage.save_dataframe_by_type(df, 'features', file_path)
+        saved_path = storage.save_dataframe_by_type(df, data_type, file_path)
         
         logger.info(f"💾 Data saved to: {saved_path}")
         return True, saved_path
@@ -214,14 +221,14 @@ def crm_data_ingestion_flow():
             's3_paths': config.storage.s3_paths,
             'data_paths': config.storage.data_paths  # Keep for backward compatibility
         },
-        # Legacy minio config for backward compatibility
-        'minio': {
-            'endpoint_url': config.storage.endpoint_url,
-            'access_key': config.storage.access_key,
-            'secret_key': config.storage.secret_key,
-            'region': config.storage.region,
-            'buckets': config.storage.buckets
-        }
+ #       # Legacy minio config for backward compatibility
+ #       'minio': {
+ #           'endpoint_url': config.storage.endpoint_url,
+ #           'access_key': config.storage.access_key,
+ #           'secret_key': config.storage.secret_key,
+ #           'region': config.storage.region,
+ #           'buckets': config.storage.buckets
+ #       }
     }
     
     # Task 1: Download data

@@ -40,9 +40,9 @@ storage:
     model_artifacts: "model-artifacts"
   # S3/MinIO paths within buckets (for containerized execution)
   s3_paths:
-    raw: "raw"
-    processed: "processed"
-    features: "features"
+    raw: "data/raw"
+    processed: "data/processed"
+    features: "data/features"
     models: "models"
     experiments: "experiments"
     prefect_flows: "prefect-flows"

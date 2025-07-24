@@ -104,7 +104,7 @@ class CRMDataIngestion:
         """
         if self.storage.use_s3:
             # List CSV files from S3
-            files = self.storage.list_files("raw/")
+            files = self.storage.list_files(str(self.raw_data_path)+"/")
             csv_files = [Path(f) for f in files if f.endswith('.csv')]
         else:
             # List CSV files from local directory
