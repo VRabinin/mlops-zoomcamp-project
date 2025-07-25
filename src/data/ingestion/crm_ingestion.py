@@ -176,12 +176,9 @@ class CRMDataIngestion:
         """
         self.logger.info("Cleaning data...")
         
-        # Clean column names
-        df_cleaned = self.schema.clean_column_names(df)
-        
         # Remove duplicates
-        initial_rows = len(df_cleaned)
-        df_cleaned = df_cleaned.drop_duplicates()
+        initial_rows = len(df)
+        df_cleaned = df.drop_duplicates()
         duplicates_removed = initial_rows - len(df_cleaned)
         if duplicates_removed > 0:
             self.logger.info(f"Removed {duplicates_removed} duplicate rows")
@@ -193,11 +190,11 @@ class CRMDataIngestion:
         categorical_cols = df_cleaned.select_dtypes(include=['object']).columns
         df_cleaned[categorical_cols] = df_cleaned[categorical_cols].fillna('Unknown')
         
-        # Fill missing numerical values with median
+        # Fill missing numerical values with median in Won or Lost deals
         numerical_cols = df_cleaned.select_dtypes(include=['number']).columns
         for col in numerical_cols:
             if df_cleaned[col].isnull().any():
-                median_val = df_cleaned[col].median()
+                median_val = df_cleaned[df_cleaned['deal_stage'].isin(['Won', 'Lost'])][col].median()
                 df_cleaned[col] = df_cleaned[col].fillna(median_val)
                 self.logger.info(f"Filled missing values in {col} with median: {median_val}")
         
@@ -218,7 +215,10 @@ class CRMDataIngestion:
         self.logger.info("Validating data schema...")
         
         is_valid, issues = self.schema.validate_schema(df)
-        
+
+        self.logger.info(f"Missing engage dates: {df[df['deal_stage'].isin(['Won', 'Lost', 'Engaging'])]['engage_date'].isnull().sum()}")
+        self.logger.info(f"Missing close dates: {df[df['deal_stage'].isin(['Won', 'Lost'])]['close_date'].isnull().sum()}")
+
         if issues:
             self.logger.warning(f"Validation issues found: {issues}")
         else:

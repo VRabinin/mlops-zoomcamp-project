@@ -34,132 +34,150 @@ class CRMFeatureEngineer:
         self.storage = StorageManager(config)
         
         self.logger = logging.getLogger(__name__)
-    
-    def create_features(self, df: pd.DataFrame) -> pd.DataFrame:
+
+    def create_features(self, df_sales: pd.DataFrame, df_sales_teams: pd.DataFrame, df_accounts: pd.DataFrame, df_products: pd.DataFrame) -> pd.DataFrame:
         """Create new features from existing data.
         
         Args:
-            df: Input DataFrame.
-            
+            df_sales: Input Sales DataFrame.
+            df_sales_teams: Input Sales Teams DataFrame.
+            df_accounts: Input Accounts DataFrame.
+            df_products: Input Products DataFrame.
+
         Returns:
             DataFrame with new features.
         """
-        df_features = df.copy()
-        
+        df_features = df_sales.copy()
+
         self.logger.info("Creating new features...")
         
         # Close value features
-        if 'close_value' in df.columns:
-            # Log transformation for close value (add 1 to handle 0 values)
-            df_features['close_value_log'] = np.log1p(df_features['close_value'])
+        # Log transformation for close value (add 1 to handle 0 values)
+        df_features['close_value_log'] = np.log1p(df_features['close_value'])
             
-            # Close value categories
-            df_features['close_value_category'] = pd.cut(
-                df_features['close_value'],
-                bins=[0, 1000, 5000, 10000, 50000, float('inf')],
-                labels=['Small', 'Medium', 'Large', 'Very Large', 'Enterprise'],
-                include_lowest=True
-            )
-        
-        # Remove probability features since this column doesn't exist in actual data
-        # Probability features
-        # if 'probability' in df.columns:
-        #     # Probability categories
-        #     df_features['probability_category'] = pd.cut(
-        #         df_features['probability'],
-        #         bins=[0, 0.2, 0.5, 0.8, 1.0],
-        #         labels=['Low', 'Medium', 'High', 'Very High'],
-        #         include_lowest=True
-        #     )
-        #     
-        #     # Risk score (1 - probability for open deals)
-        #     df_features['risk_score'] = 1 - df_features['probability']
+        # Close value categories
+        df_features['close_value_category'] = pd.cut(
+            df_features['close_value'],
+            bins=[0, 1000, 5000, 10000, 50000, float('inf')],
+            labels=['Small', 'Medium', 'Large', 'Very Large', 'Enterprise'],
+            include_lowest=True
+        )
         
         # Deal stage features
-        if 'deal_stage' in df.columns:
-            # Create deal stage progression indicator for actual stages
-            stage_order = {
-                'Prospecting': 1,
-                'Engaging': 2,
-                'Won': 4,
-                'Lost': 0  # Lost deals get 0
-            }
-            df_features['deal_stage_order'] = df_features['deal_stage'].map(stage_order)
+        # Create deal stage progression indicator for actual stages
+        stage_order = {
+            'Prospecting': 1,
+            'Engaging': 2,
+            'Won': 4,
+            'Lost': 0  # Lost deals get 0
+        }
+        df_features['deal_stage_order'] = df_features['deal_stage'].map(stage_order)
             
-            # Create binary features for deal status
-            df_features['is_closed'] = df_features['deal_stage'].isin(['Won', 'Lost'])
-            df_features['is_won'] = df_features['deal_stage'] == 'Won'
-            df_features['is_lost'] = df_features['deal_stage'] == 'Lost'
-            df_features['is_open'] = ~df_features['is_closed']
-        
+        # Create binary features for deal status
+        df_features['is_closed'] = df_features['deal_stage'].isin(['Won', 'Lost'])
+        df_features['is_won'] = df_features['deal_stage'] == 'Won'
+        df_features['is_lost'] = df_features['deal_stage'] == 'Lost'
+        df_features['is_open'] = ~df_features['is_closed']
+
+        #Join with Sales Agent
+        df_features = df_features.merge(
+            df_sales_teams,
+            on='sales_agent',
+            how='left'
+        )
+
+        # Check missing values after join
+        missing_after_join = df_features['regional_office'].isnull().sum().sum()
+        if missing_after_join > 0:
+            self.logger.warning(f"Missing values after join with sales teams: {missing_after_join}")
+
         # Sales agent features
-        if 'sales_agent' in df.columns:
-            # Count of opportunities per agent
-            agent_counts = df_features['sales_agent'].value_counts()
-            df_features['agent_opportunity_count'] = df_features['sales_agent'].map(agent_counts)
+        # Count of opportunities per agent
+        agent_counts = df_features['sales_agent'].value_counts()
+        df_features['agent_opportunity_count'] = df_features['sales_agent'].map(agent_counts)
             
-            # Agent performance metrics (if we have closed deals)
-            if 'is_won' in df_features.columns:
-                agent_win_rates = df_features.groupby('sales_agent')['is_won'].mean()
-                df_features['agent_win_rate'] = df_features['sales_agent'].map(agent_win_rates)
+        # Agent performance metrics (if we have closed deals)
+        agent_performance = df_features[df_features['is_closed']].groupby('sales_agent').agg({
+            'is_won': ['mean', 'sum'],
+            'close_value': ['mean', 'sum'],
+            'opportunity_id': 'count'
+        }).round(3)
+        agent_performance.columns = ['win_rate', 'total_wins', 'avg_deal_value', 'total_revenue', 'closed_deals']
+        agent_win_rates = agent_performance['win_rate']
+        df_features['agent_win_rate'] = df_features['sales_agent'].map(agent_win_rates)
         
         # Product features
-        if 'product' in df.columns:
-            # Product popularity
-            product_counts = df_features['product'].value_counts()
-            df_features['product_popularity'] = df_features['product'].map(product_counts)
-        
+        # Product popularity
+        product_counts = df_features['product'].value_counts()
+        df_features['product_popularity'] = df_features['product'].map(product_counts)
+
+        # Product performance
+        product_performance = df_features[df_features['is_closed']].groupby('product').agg({
+            'is_won': 'mean',
+            'close_value': 'mean',
+            'opportunity_id': 'count'
+        }).round(3)
+
+        product_performance.columns = ['product_win_rate', 'product_avg_value', 'product_deals_count']
+        df_features['product_win_rate'] = df_features['product'].map(product_performance['product_win_rate'])
+
         # Date features
-        if 'engage_date' in df.columns:
-            # Convert to datetime, handling errors
-            df_features['engage_date'] = pd.to_datetime(df_features['engage_date'], errors='coerce')
+        # Convert to datetime, handling errors
+        df_features['engage_date'] = pd.to_datetime(df_features['engage_date'], errors='coerce')
             
-            # Extract date components
-            df_features['engage_year'] = df_features['engage_date'].dt.year
-            df_features['engage_month'] = df_features['engage_date'].dt.month
-            df_features['engage_quarter'] = df_features['engage_date'].dt.quarter
-            df_features['engage_day_of_week'] = df_features['engage_date'].dt.dayofweek
-            df_features['engage_day_of_year'] = df_features['engage_date'].dt.dayofyear
+        # Extract date components
+        df_features['engage_year'] = df_features['engage_date'].dt.year
+        df_features['engage_month'] = df_features['engage_date'].dt.month
+        df_features['engage_quarter'] = df_features['engage_date'].dt.quarter
+        df_features['engage_day_of_week'] = df_features['engage_date'].dt.dayofweek
+        df_features['engage_day_of_year'] = df_features['engage_date'].dt.dayofyear
         
-        if 'close_date' in df.columns:
-            # Convert to datetime, handling errors
-            df_features['close_date'] = pd.to_datetime(df_features['close_date'], errors='coerce')
+        # Convert to datetime, handling errors
+        df_features['close_date'] = pd.to_datetime(df_features['close_date'], errors='coerce')
             
-            # Extract date components for closed deals
-            mask = df_features['close_date'].notna()
-            df_features.loc[mask, 'close_year'] = df_features.loc[mask, 'close_date'].dt.year
-            df_features.loc[mask, 'close_month'] = df_features.loc[mask, 'close_date'].dt.month
-            df_features.loc[mask, 'close_quarter'] = df_features.loc[mask, 'close_date'].dt.quarter
-            df_features.loc[mask, 'close_day_of_week'] = df_features.loc[mask, 'close_date'].dt.dayofweek
+        # Extract date components for closed deals
+        mask = df_features['close_date'].notna()
+        df_features.loc[mask, 'close_year'] = df_features.loc[mask, 'close_date'].dt.year
+        df_features.loc[mask, 'close_month'] = df_features.loc[mask, 'close_date'].dt.month
+        df_features.loc[mask, 'close_quarter'] = df_features.loc[mask, 'close_date'].dt.quarter
+        df_features.loc[mask, 'close_day_of_week'] = df_features.loc[mask, 'close_date'].dt.dayofweek
         
         # Sales cycle duration (for closed deals)
-        if 'engage_date' in df_features.columns and 'close_date' in df_features.columns:
-            mask = df_features['close_date'].notna() & df_features['engage_date'].notna()
-            df_features.loc[mask, 'sales_cycle_days'] = (
-                df_features.loc[mask, 'close_date'] - df_features.loc[mask, 'engage_date']
-            ).dt.days
+        mask = df_features['close_date'].notna() & df_features['engage_date'].notna()
+        df_features.loc[mask, 'sales_cycle_days'] = (
+            df_features.loc[mask, 'close_date'] - df_features.loc[mask, 'engage_date']
+        ).dt.days
             
-            # Sales cycle categories
-            df_features.loc[mask, 'sales_cycle_category'] = pd.cut(
-                df_features.loc[mask, 'sales_cycle_days'],
-                bins=[0, 30, 90, 180, 365, float('inf')],
-                labels=['Quick', 'Short', 'Medium', 'Long', 'Very Long'],
-                include_lowest=True
-            )
-        
+        # Sales cycle categories
+        df_features.loc[mask, 'sales_cycle_category'] = pd.cut(
+            df_features.loc[mask, 'sales_cycle_days'],
+            bins=[0, 30, 90, 180, 365, float('inf')],
+            labels=['Quick', 'Short', 'Medium', 'Long', 'Very Long'],
+            include_lowest=True
+        )
+
+        df_features = df_features.merge(
+            df_accounts,
+            on='account',
+            how='left'
+        )
+        # Check missing values after join
+        missing_after_join = df_features['account'].isnull().sum().sum()
+        if missing_after_join > 0:
+            self.logger.warning(f"Missing values after join with accounts: {missing_after_join}") 
+
         # Account features (instead of client_id)
-        if 'account' in df.columns:
-            # Account frequency (repeat customers)
-            account_counts = df_features['account'].value_counts()
-            df_features['account_frequency'] = df_features['account'].map(account_counts)
-            df_features['is_repeat_account'] = df_features['account_frequency'] > 1
+        # Account frequency (repeat customers)
+        account_counts = df_features['account'].value_counts()
+        df_features['account_frequency'] = df_features['account'].map(account_counts)
+        df_features['is_repeat_account'] = df_features['account_frequency'] > 1
         
         # Remove expected value calculation since probability doesn't exist
         # Expected value calculation
         # if 'close_value' in df.columns and 'probability' in df.columns:
         #     df_features['expected_value'] = df_features['close_value'] * df_features['probability']
         
-        self.logger.info(f"Created {len(df_features.columns) - len(df.columns)} new features")
+        self.logger.info(f"Created {len(df_features.columns) - len(df_features.columns)} new features")
         
         return df_features
     
@@ -317,33 +335,33 @@ class CRMFeatureEngineer:
         
         return df_target
     
-    def split_data(self, df: pd.DataFrame, feature_columns: List[str]) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-        """Split data into train and test sets.
-        
-        Args:
-            df: Input DataFrame.
-            feature_columns: List of feature column names.
-            
-        Returns:
-            Tuple of (X_train, X_test, y_train, y_test).
-        """
-        # Prepare features and target
-        X = df[feature_columns]
-        y = df['target_binary'] if 'target_binary' in df.columns else df[self.target_column]
-        
-        # Split the data
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y,
-            test_size=self.test_size,
-            random_state=self.random_state,
-            stratify=y if y.dtype != 'float64' else None
-        )
-        
-        self.logger.info(f"Data split: Train {X_train.shape}, Test {X_test.shape}")
-        
-        return X_train, X_test, y_train, y_test
-    
-    def run_feature_engineering(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str], Dict[str, Any]]:
+#    def split_data(self, df: pd.DataFrame, feature_columns: List[str]) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+#        """Split data into train and test sets.
+#        
+#        Args:
+#            df: Input DataFrame.
+#            feature_columns: List of feature column names.
+#            
+#        Returns:
+#            Tuple of (X_train, X_test, y_train, y_test).
+#        """
+#        # Prepare features and target
+#        X = df[feature_columns]
+#        y = df['target_binary'] if 'target_binary' in df.columns else df[self.target_column]
+#        
+#        # Split the data
+#        X_train, X_test, y_train, y_test = train_test_split(
+#            X, y,
+#            test_size=self.test_size,
+#            random_state=self.random_state,
+#            stratify=y if y.dtype != 'float64' else None
+#        )
+#        
+#        self.logger.info(f"Data split: Train {X_train.shape}, Test {X_test.shape}")
+#        
+#        return X_train, X_test, y_train, y_test
+
+    def run_feature_engineering(self, df_sales: pd.DataFrame, df_accounts: pd.DataFrame, df_products: pd.DataFrame, df_sales_teams: pd.DataFrame) -> Tuple[pd.DataFrame, List[str], Dict[str, Any]]:
         """Run complete feature engineering pipeline.
         
         Args:
@@ -353,16 +371,16 @@ class CRMFeatureEngineer:
             Tuple of (processed_dataframe, feature_columns, metadata).
         """
         metadata = {
-            'original_shape': df.shape,
-            'original_columns': list(df.columns),
+            'original_shape': df_sales.shape,
+            'original_columns': list(df_sales.columns),
             'steps_completed': []
         }
         
         # Step 1: Create new features
-        df_features = self.create_features(df)
+        df_features = self.create_features(df_sales, df_sales_teams, df_accounts, df_products)
         metadata['steps_completed'].append('create_features')
-        metadata['features_created'] = len(df_features.columns) - len(df.columns)
-        
+        metadata['features_created'] = len(df_features.columns) - len(df_sales.columns)
+
         # Step 2: Encode categorical features
         df_encoded = self.encode_categorical_features(df_features, fit=True)
         metadata['steps_completed'].append('encode_categorical')
@@ -403,15 +421,21 @@ def main():
     
     # Load processed data using smart storage
     try:
-        df = feature_engineer.storage.load_dataframe('processed', 'crm_data_processed.csv')
-        print(f"📊 Loaded data: {df.shape}")
+        df_sales = feature_engineer.storage.load_dataframe('processed', 'crm_data_processed.csv')
+        df_sales_teams = feature_engineer.storage.load_dataframe('raw', 'sales_teams.csv')
+        df_accounts = feature_engineer.storage.load_dataframe('raw', 'accounts.csv')
+        df_products = feature_engineer.storage.load_dataframe('raw', 'products.csv')
+        print(f"📊 Loaded sales: {df_sales.shape}")
+        print(f"📊 Loaded sales teams: {df_sales_teams.shape}")
+        print(f"📊 Loaded accounts: {df_accounts.shape}")
+        print(f"📊 Loaded products: {df_products.shape}")
     except Exception as e:
         print(f"❌ Failed to load processed data: {str(e)}")
         print("Please run data ingestion first: make data-pipeline-flow")
         return 1
     
     # Run feature engineering
-    df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df)
+    df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df_sales, df_sales_teams, df_accounts, df_products)
     
     # Save processed data with features using smart storage
     saved_path = feature_engineer.storage.save_dataframe(df_processed, 'features', 'crm_features.csv')

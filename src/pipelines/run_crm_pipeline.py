@@ -39,43 +39,52 @@ def download_crm_data_task(config: Config) -> Tuple[bool, str]:
 
 
 @task(name="load_and_clean_data", retries=1)
-def load_and_clean_data_task(config: Config) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
+def load_and_clean_data_task(config: Config) -> Tuple[bool, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, Any]]:
     """Load and clean CRM data.
     
     Args:
         config: Configuration dictionary.
         
     Returns:
-        Tuple of (success, dataframe, metadata).
+        Tuple of (success, sales_df, accounts_df, products_df, sales_teams_df, metadata).
     """
     logger = get_run_logger()
     logger.info("Loading and cleaning CRM data")
     
     try:
         ingestion = CRMDataIngestion(config)
-        
-        # Load data
-        df = ingestion.load_data()
-        logger.info(f"📊 Loaded data shape: {df.shape}")
-        
+
+        # Load sales data
+        df_sales = ingestion.load_data(Path('sales_pipeline.csv'))
+        logger.info(f"📊 Loaded Sales data shape: {df_sales.shape}")
+        # Load accounts data
+        df_accounts = ingestion.load_data(Path('accounts.csv'))
+        logger.info(f"📊 Loaded Accounts data shape: {df_accounts.shape}")
+        # Load products data
+        df_products = ingestion.load_data(Path('products.csv'))
+        logger.info(f"📊 Loaded Products data shape: {df_products.shape}")
+        # Load sales teams data
+        df_sales_teams = ingestion.load_data(Path('sales_teams.csv'))
+        logger.info(f"📊 Loaded Sales Teams data shape: {df_sales_teams.shape}")
+
         # Clean data
-        df_cleaned = ingestion.clean_data(df)
+        df_cleaned = ingestion.clean_data(df_sales)
         logger.info(f"🧹 Cleaned data shape: {df_cleaned.shape}")
         
         # Create metadata
         metadata = {
-            'raw_shape': df.shape,
+            'raw_shape': df_cleaned.shape,
             'cleaned_shape': df_cleaned.shape,
             'columns': list(df_cleaned.columns),
             'data_types': df_cleaned.dtypes.to_dict()
         }
         
         logger.info("✅ Data loading and cleaning completed")
-        return True, df_cleaned, metadata
+        return True, df_cleaned, df_accounts, df_products, df_sales_teams, metadata
         
     except Exception as e:
         logger.error(f"❌ Data loading failed: {str(e)}")
-        return False, pd.DataFrame(), {'error': str(e)}
+        return False, pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), {'error': str(e)}
 
 
 @task(name="validate_data_quality", retries=1)
@@ -117,7 +126,7 @@ def validate_data_quality_task(df: pd.DataFrame, config: Config) -> Tuple[bool, 
 
 
 @task(name="engineer_features", retries=1)
-def engineer_features_task(df: pd.DataFrame, config: Config) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
+def engineer_features_task(df_sales: pd.DataFrame, df_accounts: pd.DataFrame, df_products: pd.DataFrame, df_sales_teams: pd.DataFrame, config: Config) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
     """Engineer features from the data.
     
     Args:
@@ -131,7 +140,7 @@ def engineer_features_task(df: pd.DataFrame, config: Config) -> Tuple[bool, pd.D
     logger.info("Starting feature engineering")
     try:
         feature_engineer = CRMFeatureEngineer(config)
-        df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df)
+        df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df_sales, df_accounts, df_products, df_sales_teams)
         logger.info(f"🎯 Features created: {metadata['features_created']}")
         logger.info(f"📝 Feature columns: {len(feature_columns)}")
         logger.info("✅ Feature engineering completed")
@@ -193,7 +202,7 @@ def crm_data_ingestion_flow():
         return {"status": "failed", "step": "download", "error": download_message}
     
     # Task 2: Load and clean data
-    load_success, df_cleaned, load_metadata = load_and_clean_data_task(config)
+    load_success, df_cleaned, df_accounts, df_products, df_sales_teams, load_metadata = load_and_clean_data_task(config)
     
     if not load_success:
         logger.error(f"Pipeline failed at load step: {load_metadata.get('error', 'Unknown error')}")
@@ -210,7 +219,7 @@ def crm_data_ingestion_flow():
     validation_passed, validation_results = validate_data_quality_task(df_cleaned, config)
     
     # Task 5: Engineer features
-    features_success, df_features, features_metadata = engineer_features_task(df_cleaned, config)
+    features_success, df_features, features_metadata = engineer_features_task(df_cleaned, df_accounts, df_products, df_sales_teams, config)
     
     if not features_success:
         logger.error(f"Pipeline failed at feature engineering: {features_metadata.get('error', 'Unknown error')}")
