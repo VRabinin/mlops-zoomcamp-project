@@ -216,9 +216,6 @@ class CRMDataIngestion:
         
         is_valid, issues = self.schema.validate_schema(df)
 
-        self.logger.info(f"Missing engage dates: {df[df['deal_stage'].isin(['Won', 'Lost', 'Engaging'])]['engage_date'].isnull().sum()}")
-        self.logger.info(f"Missing close dates: {df[df['deal_stage'].isin(['Won', 'Lost'])]['close_date'].isnull().sum()}")
-
         if issues:
             self.logger.warning(f"Validation issues found: {issues}")
         else:

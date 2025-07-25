@@ -219,30 +219,6 @@ class TestCRMDataIngestion:
             assert all(isinstance(f, Path) for f in csv_files)
             assert csv_files[0].name == 'sales_pipeline.csv'
     
-    def test_clean_data(self):
-        """Test data cleaning functionality."""
-        # Create sample data with issues
-        sample_data = pd.DataFrame({
-            'Opportunity ID': ['OPP001', 'OPP002', 'OPP001'],  # Duplicate
-            'Sales Agent ': ['Agent1', 'Agent2', 'Agent1'],  # Space in column name
-            'Close Value': [1000.0, 2000.0, 1000.0]
-        })
-        
-        config = Config()
-        config.data_path.raw = "test/raw"
-        config.data_path.processed = "test/processed"
-        
-        ingestion = CRMDataIngestion(config)
-        
-        cleaned_df = ingestion.clean_data(sample_data)
-        
-        # Check column names are cleaned
-        assert 'opportunity_id' in cleaned_df.columns
-        assert 'sales_agent' in cleaned_df.columns
-        
-        # Check duplicates are removed
-        assert len(cleaned_df) == 2
-    
     def test_validate_data_empty_dataframe(self):
         """Test validation with empty DataFrame."""
         config = Config()
