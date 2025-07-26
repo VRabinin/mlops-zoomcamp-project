@@ -329,6 +329,35 @@ quick-start: dev-setup data-pipeline train ## Quick start for new developers
 
 quick-flow: dev-setup prefect-deploy-crm prefect-agent ## Quick start with Prefect flows
 
+# Streamlit Application
+streamlit-app: ## Start Streamlit application (local)
+	@echo "🚀 Starting CRM Win Probability Predictor..."
+	@echo "📊 App will be available at: http://localhost:8501"
+	@echo "🔧 Make sure MLflow server is running at http://localhost:5005"
+	@echo ""
+	PYTHONPATH=$${PYTHONPATH}:$(PWD) python scripts/start_streamlit.py
+
+streamlit-dev: ## Start Streamlit in development mode with auto-reload (local)
+	@echo "🚀 Starting Streamlit in development mode..."
+	@echo "📊 App will be available at: http://localhost:8501"
+	@echo "🔧 Make sure MLflow server is running at http://localhost:5005"
+	@echo ""
+	PYTHONPATH=$${PYTHONPATH}:$(PWD) streamlit run src/streamlit_app/app.py \
+		--server.port 8501 \
+		--server.address 0.0.0.0 \
+		--theme.base light \
+		--server.runOnSave true
+
+streamlit-logs: ## Show Streamlit container logs
+	docker compose logs -f streamlit
+
+streamlit-rebuild: ## Rebuild and restart Streamlit container
+	@echo "🔄 Rebuilding Streamlit container..."
+	docker compose build --no-cache streamlit
+	docker compose up -d streamlit
+	@echo "✅ Streamlit container rebuilt and restarted"
+
+
 status: ## Show project status
 	@echo "MLOps Platform Status"
 	@echo "===================="
@@ -336,3 +365,6 @@ status: ## Show project status
 	@echo "MLFlow tracking URI: $(shell echo $${MLFLOW_TRACKING_URI:-http://localhost:5000})"
 	@echo "Data directory size: $(shell du -sh data/ 2>/dev/null || echo 'No data directory')"
 	@echo "Models directory size: $(shell du -sh models/ 2>/dev/null || echo 'No models directory')"
+	@echo "Streamlit Container Status:"
+	@docker compose ps streamlit
+	@curl -s -o /dev/null -w "Streamlit AppHTTP Status: %{http_code}" http://localhost:8501/_stcore/health || echo "Not accessible"

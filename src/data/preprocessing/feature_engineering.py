@@ -35,7 +35,7 @@ class CRMFeatureEngineer:
         
         self.logger = logging.getLogger(__name__)
 
-    def create_features(self, df_sales: pd.DataFrame, df_sales_teams: pd.DataFrame, df_accounts: pd.DataFrame, df_products: pd.DataFrame) -> pd.DataFrame:
+    def create_features(self, df_sales: pd.DataFrame, df_accounts: pd.DataFrame, df_products: pd.DataFrame, df_sales_teams: pd.DataFrame) -> pd.DataFrame:
         """Create new features from existing data.
         
         Args:
@@ -74,10 +74,10 @@ class CRMFeatureEngineer:
         df_features['deal_stage_order'] = df_features['deal_stage'].map(stage_order)
             
         # Create binary features for deal status
-        df_features['is_closed'] = df_features['deal_stage'].isin(['Won', 'Lost'])
-        df_features['is_won'] = df_features['deal_stage'] == 'Won'
-        df_features['is_lost'] = df_features['deal_stage'] == 'Lost'
-        df_features['is_open'] = ~df_features['is_closed']
+        df_features['is_closed'] = df_features['deal_stage'].isin(['Won', 'Lost']).astype(int)
+        df_features['is_won'] = (df_features['deal_stage'] == 'Won').astype(int)
+        df_features['is_lost'] = (df_features['deal_stage'] == 'Lost').astype(int)
+        df_features['is_open'] = (1 - df_features['is_closed']).astype(int)
 
         #Join with Sales Agent
         df_features = df_features.merge(
@@ -97,7 +97,7 @@ class CRMFeatureEngineer:
         df_features['agent_opportunity_count'] = df_features['sales_agent'].map(agent_counts)
             
         # Agent performance metrics (if we have closed deals)
-        agent_performance = df_features[df_features['is_closed']].groupby('sales_agent').agg({
+        agent_performance = df_features[df_features['is_closed']==1].groupby('sales_agent').agg({
             'is_won': ['mean', 'sum'],
             'close_value': ['mean', 'sum'],
             'opportunity_id': 'count'
@@ -112,7 +112,7 @@ class CRMFeatureEngineer:
         df_features['product_popularity'] = df_features['product'].map(product_counts)
 
         # Product performance
-        product_performance = df_features[df_features['is_closed']].groupby('product').agg({
+        product_performance = df_features[df_features['is_closed']==1].groupby('product').agg({
             'is_won': 'mean',
             'close_value': 'mean',
             'opportunity_id': 'count'
@@ -170,7 +170,7 @@ class CRMFeatureEngineer:
         # Account frequency (repeat customers)
         account_counts = df_features['account'].value_counts()
         df_features['account_frequency'] = df_features['account'].map(account_counts)
-        df_features['is_repeat_account'] = df_features['account_frequency'] > 1
+        df_features['is_repeat_account'] = (df_features['account_frequency'] > 1).astype(int)
         
         # Remove expected value calculation since probability doesn't exist
         # Expected value calculation
@@ -377,7 +377,7 @@ class CRMFeatureEngineer:
         }
         
         # Step 1: Create new features
-        df_features = self.create_features(df_sales, df_sales_teams, df_accounts, df_products)
+        df_features = self.create_features(df_sales, df_accounts, df_products, df_sales_teams)
         metadata['steps_completed'].append('create_features')
         metadata['features_created'] = len(df_features.columns) - len(df_sales.columns)
 
@@ -435,7 +435,7 @@ def main():
         return 1
     
     # Run feature engineering
-    df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df_sales, df_sales_teams, df_accounts, df_products)
+    df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df_sales, df_accounts, df_products, df_sales_teams)
     
     # Save processed data with features using smart storage
     saved_path = feature_engineer.storage.save_dataframe(df_processed, 'features', 'crm_features.csv')

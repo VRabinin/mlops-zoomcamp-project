@@ -163,7 +163,32 @@ make prefect-help          # Show all Prefect commands
 
 **✅ Current Status**: The CRM data pipeline is fully operational and processes 8,800+ CRM records with 23 engineered features. The pipeline achieves a 0.93 validation score and supports both standalone and Prefect-orchestrated execution.
 
-### 5. Storage Configuration
+### 5. Launch Web Application
+
+```bash
+# 🎯 INTERACTIVE PREDICTION INTERFACE: Streamlit web application
+
+# Start the web application (requires trained model)
+make streamlit-app
+
+# Or for development with auto-reload
+make streamlit-dev
+
+# The app will be available at: http://localhost:8501
+```
+
+**📊 Features:**
+- **Single Predictions**: Interactive form for individual opportunity predictions
+- **Pipeline Overview**: Batch analysis of all open opportunities  
+- **Model Insights**: Performance metrics and feature importance
+- **Risk Assessment**: Automated recommendations based on win probability
+
+**Prerequisites:**
+- MLflow server running (`make dev-start`)
+- Trained model registered in MLflow (`monthly_win_probability_model`)
+- CRM features dataset available
+
+### 6. Storage Configuration
 
 **🗃️ Intelligent Storage Management**: The pipeline automatically selects the appropriate storage backend based on execution environment:
 
@@ -195,7 +220,7 @@ USE_S3_STORAGE=true python src/pipelines/run_crm_pipeline.py
 - **Production Ready**: S3-compatible storage for scalability
 - **Container Compatible**: Automatic S3 mode in Docker environments
 
-### 6. Explore and Train
+### 7. Explore and Train
 
 ```bash
 # Start MLFlow UI (experiment tracking)
@@ -295,6 +320,8 @@ make prefect-stop       # Stop Prefect services
 | `make dev-setup` | Complete development environment setup | ✅ |
 | `make prefect-start` | **Start Prefect server + agent (recommended)** | ✅ |
 | `make dev-start` | Start MLFlow + basic services | ✅ |
+| `make streamlit-app` | **Start Streamlit web application** | ✅ |
+| `make streamlit-dev` | **Start Streamlit in development mode** | ✅ |
 | `make data-pipeline` | Run complete data ingestion pipeline | ✅ |
 | `make data-pipeline-flow` | **Run data pipeline as Prefect flow** | ✅ |
 | `make prefect-deploy-crm` | **Deploy CRM ingestion flow to Prefect** | ✅ |
