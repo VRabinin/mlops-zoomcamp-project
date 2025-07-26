@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
 COPY src/ ./src/
+COPY src_app/ ./src_app/
 COPY data/ ./data/
 
 # Create necessary directories
@@ -37,7 +38,7 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl --fail http://localhost:8501/_stcore/health || exit 1
 
 # Run Streamlit
-CMD ["streamlit", "run", "src/streamlit_app/app.py", \
+CMD ["streamlit", "run", "src_app/app.py", \
      "--server.port=8501", \
      "--server.address=0.0.0.0", \
      "--theme.base=light"]

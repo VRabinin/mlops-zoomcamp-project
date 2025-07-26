@@ -134,7 +134,7 @@ serve-model: ## Start model serving API
 
 serve-ui: ## Start Streamlit UI
 	@echo "Starting Streamlit UI..."
-	streamlit run src/streamlit_app/main.py
+	streamlit run src_app/app.py
 
 # MLFlow
 mlflow-ui: ## Start MLFlow UI
@@ -342,7 +342,7 @@ streamlit-dev: ## Start Streamlit in development mode with auto-reload (local)
 	@echo "📊 App will be available at: http://localhost:8501"
 	@echo "🔧 Make sure MLflow server is running at http://localhost:5005"
 	@echo ""
-	PYTHONPATH=$${PYTHONPATH}:$(PWD) streamlit run src/streamlit_app/app.py \
+	PYTHONPATH=$${PYTHONPATH}:$(PWD) streamlit run src_app/app.py \
 		--server.port 8501 \
 		--server.address 0.0.0.0 \
 		--theme.base light \

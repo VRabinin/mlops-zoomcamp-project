@@ -179,7 +179,7 @@ services:
   streamlit:
     build:
       context: .
-      dockerfile: src/streamlit_app/Dockerfile
+      dockerfile: src_app/Dockerfile
     container_name: mlops-streamlit
     ports:
       - "${STREAMLIT_PORT:-8501}:8501"
