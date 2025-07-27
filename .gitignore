@@ -224,6 +224,7 @@ checkpoints/
 # Data files (large datasets)
 data/raw/
 data/processed/
+data/features/
 *.parquet
 *.h5
 *.hdf5
