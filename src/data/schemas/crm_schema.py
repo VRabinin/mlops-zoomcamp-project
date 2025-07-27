@@ -18,7 +18,10 @@ class CRMDataSchema:
             'deal_stage',
             'engage_date',
             'close_date',
-            'close_value'
+            'close_value',
+            'creation_date',
+            'creation_year_month',
+            'snapshot_date'
         ]
         
         # Define expected data types
@@ -30,7 +33,10 @@ class CRMDataSchema:
             'deal_stage': 'object',
             'engage_date': 'object',
             'close_date': 'object',
-            'close_value': 'float64'
+            'close_value': 'float64',
+            'creation_date': 'object',
+            'creation_year_month': 'object',
+            'snapshot_date': 'object'
         }
         
         # Define target column

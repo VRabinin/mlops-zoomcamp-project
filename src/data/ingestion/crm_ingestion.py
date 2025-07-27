@@ -24,7 +24,8 @@ class CRMDataIngestion:
         self.config = config
         self.kaggle_dataset = 'innocentmfa/crm-sales-opportunities'
         self.snapshot_month = snapshot_month
-
+        os.environ['AWS_ACCESS_KEY_ID'] = config.storage.access_key
+        os.environ['AWS_SECRET_ACCESS_KEY'] = config.storage.secret_key
         # Initialize storage manager - this now handles all path logic
         self.storage = StorageManager(config)
         

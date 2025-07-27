@@ -120,14 +120,10 @@ minio-status: ## Check MinIO status
 # ================= Validated till here ================
 
 
-# Model Training
-train: ## Train ML models
-	@echo "Training models..."
-	python -m src.models.train
-
-train-experiment: ## Run training experiment with MLFlow
-	@echo "Running training experiment..."
-	python -m src.models.experiment
+train-monthly-win: ## Train monthly win probability model
+	@echo "Training monthly win probability model..."
+	@export PREFECT_API_URL=http://localhost:4200/api && \
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_monthly_win_training.py
 
 evaluate: ## Evaluate trained models
 	@echo "Evaluating models..."
@@ -159,6 +155,16 @@ prefect-deploy-crm: ## Deploy CRM ingestion flow with S3 storage
 	@echo "Deploying CRM ingestion flow with S3 storage..."
 	@export PREFECT_API_URL=http://localhost:4200/api && \
 	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python src/pipelines/deploy_crm_pipeline.py
+
+prefect-deploy-monthly-training: ## Deploy monthly win probability training flow
+	@echo "Deploying monthly win probability training flow..."
+	@export PREFECT_API_URL=http://localhost:4200/api && \
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/deploy_monthly_win_training.py
+
+prefect-run-monthly-training: ## Run monthly win probability training flow
+	@echo "Running monthly win probability training flow..."
+	@export PREFECT_API_URL=http://localhost:4200/api && \
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_monthly_win_training.py
 
 #prefect-deploy-s3: ## Deploy CRM flow with S3 storage (MinIO)
 #	@echo "Deploying CRM flow with S3 storage (MinIO)..."
@@ -208,22 +214,24 @@ prefect-ui: ## Open Prefect UI in browser
 
 prefect-help: ## Show all Prefect commands
 	@echo "=== Available Prefect Commands ==="
-	@echo "prefect-deploy-crm:      Deploy CRM flow with S3 storage"
-	@echo "prefect-deploy-s3:       Deploy CRM flow with MinIO S3 storage"
-	@echo "prefect-run-crm:         Run CRM ingestion flow directly"	
-	@echo "prefect-deployments:     List all deployments"
-	@echo "prefect-flows:           List recent flow runs"
-	@echo "prefect-run-deployment:  Run CRM deployment manually"
-	@echo "prefect-status-all:      Show comprehensive status"
-	@echo "prefect-ui:              Open Prefect UI in browser"
-	@echo "prefect-help:            Show this help message"
+	@echo "prefect-deploy-crm:              Deploy CRM flow with S3 storage"
+	@echo "prefect-deploy-monthly-training: Deploy monthly win probability training flow"
+	@echo "prefect-run-ingestion:           Run CRM ingestion flow directly"
+	@echo "prefect-run-monthly-training:    Run monthly win probability training flow"
+	@echo "prefect-deployments:             List all deployments"
+	@echo "prefect-flows:                   List recent flow runs"
+	@echo "prefect-ui:                      Open Prefect UI in browser"
+	@echo "prefect-help:                    Show this help message"
+	@echo ""
+	@echo "=== Model Training ==="
+	@echo "train-monthly-win:               Train monthly win probability model locally"
 	@echo ""
 	@echo "=== MinIO S3 Storage ==="
-	@echo "minio-ui:                Open MinIO web console"
-	@echo "minio-buckets:           List all MinIO buckets"
-	@echo "minio-list-data:         List data-lake bucket contents"
-	@echo "minio-list-mlflow:       List MLflow artifacts"
-	@echo "minio-status:            Check MinIO service status"
+	@echo "minio-ui:                        Open MinIO web console"
+	@echo "minio-buckets:                   List all MinIO buckets"
+	@echo "minio-list-data:                 List data-lake bucket contents"
+	@echo "minio-list-mlflow:               List MLflow artifacts"
+	@echo "minio-status:                    Check MinIO service status"
 
 prefect-status-all: ## Show comprehensive Prefect status
 	@echo "=== Prefect Status ==="

@@ -53,10 +53,10 @@ def load_and_clean_data_task(config: Config, snapshot_month: str) -> Tuple[bool,
     logger.info("Loading and cleaning CRM data")
     
     try:
-        ingestion = CRMDataIngestion(config, snapshot_month=snapshot_month)
+        ingestion = CRMDataIngestion(config, snapshot_month)
 
         # Load sales data
-        df_sales = ingestion.load_data(Path('sales_pipeline.csv'))
+        df_sales = ingestion.load_data(Path(f'sales_pipeline_enhanced{snapshot_month}.csv'))
         logger.info(f"📊 Loaded Sales data shape: {df_sales.shape}")
         # Load accounts data
         df_accounts = ingestion.load_data(Path('accounts.csv'))
@@ -172,7 +172,7 @@ def save_processed_data_task(df: pd.DataFrame, config: Config, suffix: str = "pr
         storage = StorageManager(config)
         
         # Use smart storage method for consistent path handling
-        file_path = f"crm_{suffix}_{snapshot_month}.csv"
+        file_path = f"crm_data_{suffix}_{snapshot_month}.csv"
 
         saved_path = storage.save_dataframe(df, suffix, file_path)
         

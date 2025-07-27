@@ -16,13 +16,24 @@ deployments:
   entrypoint: src/pipelines/run_crm_ingestion.py:crm_data_ingestion_flow
   name: crm-data-ingestion
   parameters: {}
-  schedule:
-    interval: 3600
   tags:
   - data
   - ingestion
   - crm
   - etl
+  - s3
+  - minio
+  work_pool:
+    name: default-agent-pool
+- description: Monthly win probability training pipeline (MinIO S3 storage)
+  entrypoint: src/pipelines/run_monthly_win_training.py:monthly_win_probability_training_flow
+  name: monthly-win-probability-training
+  parameters: {}
+  tags:
+  - data
+  - training
+  - crm
+  - ml
   - s3
   - minio
   work_pool:

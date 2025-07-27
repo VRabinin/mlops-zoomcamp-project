@@ -10,7 +10,7 @@ data_path:
 
 # MLFlow configuration
 mlflow:
-  tracking_uri: "http://localhost:5000"
+  tracking_uri: "http://localhost:5005"
   artifact_location: "mlruns"
   s3_endpoint_url: "http://localhost:9000"
   s3_access_key: "minioadmin"
