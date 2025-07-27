@@ -20,6 +20,7 @@ The platform follows a microservices-based architecture with the following key c
 - **Experiment Tracking**: MLFlow 2.7+ (PostgreSQL backend)
 - **Workflow Orchestration**: Prefect 3.x (fully operational with CRM data pipeline)
 - **Model Serving**: MLFlow
+- **Storage**: MinIO S3-compatible storage (✅ **OPERATIONAL** - 7.5MB+ CRM features stored)
 - **Monitoring**: Evidently AI
 - **CI/CD**: GitHub Actions
 - **Infrastructure as Code**: Terraform
@@ -48,7 +49,18 @@ The platform follows a microservices-based architecture with the following key c
 ├── src/                   # Source code
 │   ├── data/             # Data pipeline modules
 │   │   ├── ingestion/    # Data ingestion (Kaggle CRM dataset) ✅ OPERATIONAL
-│   │   ├── validation/   # Data quality validation ✅ OPERATIONAL
+│   │   │   ├── crm_ingestion.py     # Monthly snapshot processing ✅
+│   │   │   └── crm_acquisition.py   # Enhanced data acquisition ✅
+│   │   ├── validation/   # Data quality validation ✅ OPERATIONAL (0.93 score)
+│   │   ├── preprocessing/ # Feature engineering ✅ OPERATIONAL (23 features)
+│   │   └── schemas/      # Data schema definitions ✅
+│   ├── pipelines/        # Prefect workflow definitions ✅ OPERATIONAL
+│   │   ├── run_crm_ingestion.py     # Monthly CRM processing flow ✅
+│   │   ├── run_crm_acquisition.py   # Enhanced acquisition flow ✅ 
+│   │   └── deploy_crm_pipelines.py  # S3-based deployment ✅
+│   ├── utils/            # Utility modules ✅
+│   │   └── storage.py    # Intelligent S3/local storage manager ✅
+│   └── config/           # Configuration management ✅
 │   │   ├── preprocessing/ # Feature engineering ✅ OPERATIONAL
 │   │   └── schemas/      # Data schema definitions ✅ OPERATIONAL
 │   ├── pipelines/        # Prefect workflow definitions ✅ OPERATIONAL
@@ -129,39 +141,43 @@ make application-status
 ### 4. Run Data Pipeline
 
 ```bash
-# 🎯 FULLY OPERATIONAL: Complete CRM data pipeline with Prefect orchestration
+# 🎯 FULLY OPERATIONAL: Enhanced CRM data pipeline with dual flow architecture
 
-# Download and process CRM dataset from Kaggle (standalone)
-# Data is stored in subfolders of directory ./data
-make data-pipeline
+# Option 1: Enhanced data acquisition flow (with simulation features)
+make data-acquisition       # Enhanced CRM acquisition with multi-month simulation
 
-# Or run steps individually:
-make data-download    # Download CRM dataset
-make data-validate    # Validate data quality  
-make data-process     # Process raw data into features
+# Option 2: Monthly snapshot processing flow 
+make data-pipeline-flow     # Monthly CRM processing with feature engineering
 
+# Or use original standalone pipeline:
+make data-pipeline          # Standalone execution (stores in ./data directories)
 
-# Run CRM flow on Prefect server directly
-make prefect-run-crm  # Run flow without deploying
-
-# Deploy CRM flow to Prefect server
-#Data is stored in the bucket on MinIO
-make prefect-deploy-crm  # Deploy flow for scheduled/manual execution
+# Deploy flows to Prefect server for orchestration
+make prefect-deploy-crm     # Deploy both acquisition and ingestion flows
 
 # Monitor workflow execution
-make prefect-status-all  # Comprehensive status (server, deployments, runs)
-make prefect-ui         # Open Prefect dashboard (http://localhost:4200)
+make prefect-status-all     # Comprehensive status (server, deployments, runs)
+make prefect-ui            # Open Prefect dashboard (http://localhost:4200)
 
-# Manual workflow execution
-make prefect-run-deployment  # Trigger deployed CRM flow manually
+# Manual workflow execution  
+make prefect-run-deployment # Trigger deployed flows manually
+
+# MinIO Storage Management
+make minio-ui              # MinIO web console (http://localhost:9001)
+make minio-list-data       # View 7.5MB+ of processed CRM data
+make minio-buckets         # List all storage buckets
 
 # Additional Prefect commands
-make prefect-deployments    # List all deployments
-make prefect-flows         # Show recent flow runs
-make prefect-help          # Show all Prefect commands
+make prefect-deployments   # List all deployments
+make prefect-flows        # Show recent flow runs
+make prefect-help         # Show all 11 Prefect commands
 ```
 
-**✅ Current Status**: The CRM data pipeline is fully operational and processes 8,800+ CRM records with 23 engineered features. The pipeline achieves a 0.93 validation score and supports both standalone and Prefect-orchestrated execution.
+**✅ Current Status**: The CRM data pipeline is fully operational with dual flow architecture:
+- **Enhanced Acquisition**: Processes 8,800+ CRM records with simulation features
+- **Monthly Processing**: Creates 23 engineered features with 0.93 validation score  
+- **Storage**: 7.5MB+ of processed features stored in MinIO S3
+- **Orchestration**: Both flows deployed and running with Prefect 3.x
 
 ### 5. Launch Web Application
 

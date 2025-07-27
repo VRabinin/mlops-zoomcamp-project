@@ -324,7 +324,7 @@ def main():
     
     try:
         # Load processed data
-        df = validator.load_processed_data()
+        df = validator.load_processed_data(f'crm_data_processed_{config.first_snapshot_month}.csv')
         
         # Run validation
         results = validator.run_comprehensive_validation(df)

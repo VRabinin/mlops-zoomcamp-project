@@ -419,9 +419,12 @@ def main():
     # Create feature engineer
     feature_engineer = CRMFeatureEngineer(config)
     
+    #TODO: Find the first monthly file filename for processed data
+    ###processed_data_path = Path(config.data_path.) / 'processed' / 'crm_data_processed.csv'
+
     # Load processed data using smart storage
     try:
-        df_sales = feature_engineer.storage.load_dataframe('processed', 'crm_data_processed.csv')
+        df_sales = feature_engineer.storage.load_dataframe('processed', f'crm_data_processed_{config.first_snapshot_month}.csv')
         df_sales_teams = feature_engineer.storage.load_dataframe('raw', 'sales_teams.csv')
         df_accounts = feature_engineer.storage.load_dataframe('raw', 'accounts.csv')
         df_products = feature_engineer.storage.load_dataframe('raw', 'products.csv')
@@ -438,7 +441,7 @@ def main():
     df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df_sales, df_accounts, df_products, df_sales_teams)
     
     # Save processed data with features using smart storage
-    saved_path = feature_engineer.storage.save_dataframe(df_processed, 'features', 'crm_features.csv')
+    saved_path = feature_engineer.storage.save_dataframe(df_processed, 'features', f'crm_features_{config.first_snapshot_month}.csv')
     
     print(f"✅ Feature engineering completed!")
     print(f"📊 Final shape: {df_processed.shape}")

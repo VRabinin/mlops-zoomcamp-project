@@ -1,4 +1,6 @@
 # Data configuration
+first_snapshot_month: "2017-05" # Month to generate first data snapshot
+
 data_path:
   # Local filesystem paths (for direct execution)
   local_paths:

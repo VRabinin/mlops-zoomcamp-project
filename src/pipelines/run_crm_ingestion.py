@@ -1,6 +1,7 @@
 """CRM data ingestion flow using Prefect."""
 
 import logging
+from logging import config
 from pathlib import Path
 from typing import Dict, Any, Tuple
 
@@ -39,43 +40,52 @@ def download_crm_data_task(config: Config) -> Tuple[bool, str]:
 
 
 @task(name="load_and_clean_data", retries=1)
-def load_and_clean_data_task(config: Config) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
+def load_and_clean_data_task(config: Config, snapshot_month: str) -> Tuple[bool, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, Any]]:
     """Load and clean CRM data.
     
     Args:
         config: Configuration dictionary.
         
     Returns:
-        Tuple of (success, dataframe, metadata).
+        Tuple of (success, sales_df, accounts_df, products_df, sales_teams_df, metadata).
     """
     logger = get_run_logger()
     logger.info("Loading and cleaning CRM data")
     
     try:
-        ingestion = CRMDataIngestion(config)
-        
-        # Load data
-        df = ingestion.load_data()
-        logger.info(f"📊 Loaded data shape: {df.shape}")
-        
+        ingestion = CRMDataIngestion(config, snapshot_month=snapshot_month)
+
+        # Load sales data
+        df_sales = ingestion.load_data(Path('sales_pipeline.csv'))
+        logger.info(f"📊 Loaded Sales data shape: {df_sales.shape}")
+        # Load accounts data
+        df_accounts = ingestion.load_data(Path('accounts.csv'))
+        logger.info(f"📊 Loaded Accounts data shape: {df_accounts.shape}")
+        # Load products data
+        df_products = ingestion.load_data(Path('products.csv'))
+        logger.info(f"📊 Loaded Products data shape: {df_products.shape}")
+        # Load sales teams data
+        df_sales_teams = ingestion.load_data(Path('sales_teams.csv'))
+        logger.info(f"📊 Loaded Sales Teams data shape: {df_sales_teams.shape}")
+
         # Clean data
-        df_cleaned = ingestion.clean_data(df)
+        df_cleaned = ingestion.clean_data(df_sales)
         logger.info(f"🧹 Cleaned data shape: {df_cleaned.shape}")
         
         # Create metadata
         metadata = {
-            'raw_shape': df.shape,
+            'raw_shape': df_cleaned.shape,
             'cleaned_shape': df_cleaned.shape,
             'columns': list(df_cleaned.columns),
             'data_types': df_cleaned.dtypes.to_dict()
         }
         
         logger.info("✅ Data loading and cleaning completed")
-        return True, df_cleaned, metadata
+        return True, df_cleaned, df_accounts, df_products, df_sales_teams, metadata
         
     except Exception as e:
         logger.error(f"❌ Data loading failed: {str(e)}")
-        return False, pd.DataFrame(), {'error': str(e)}
+        return False, pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), {'error': str(e)}
 
 
 @task(name="validate_data_quality", retries=1)
@@ -117,7 +127,7 @@ def validate_data_quality_task(df: pd.DataFrame, config: Config) -> Tuple[bool, 
 
 
 @task(name="engineer_features", retries=1)
-def engineer_features_task(df: pd.DataFrame, config: Config) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
+def engineer_features_task(df_sales: pd.DataFrame, df_accounts: pd.DataFrame, df_products: pd.DataFrame, df_sales_teams: pd.DataFrame, config: Config) -> Tuple[bool, pd.DataFrame, Dict[str, Any]]:
     """Engineer features from the data.
     
     Args:
@@ -131,7 +141,7 @@ def engineer_features_task(df: pd.DataFrame, config: Config) -> Tuple[bool, pd.D
     logger.info("Starting feature engineering")
     try:
         feature_engineer = CRMFeatureEngineer(config)
-        df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df)
+        df_processed, feature_columns, metadata = feature_engineer.run_feature_engineering(df_sales, df_accounts, df_products, df_sales_teams)
         logger.info(f"🎯 Features created: {metadata['features_created']}")
         logger.info(f"📝 Feature columns: {len(feature_columns)}")
         logger.info("✅ Feature engineering completed")
@@ -143,7 +153,7 @@ def engineer_features_task(df: pd.DataFrame, config: Config) -> Tuple[bool, pd.D
 
 
 @task(name="save_processed_data", retries=1)
-def save_processed_data_task(df: pd.DataFrame, config: Config, suffix: str = "processed") -> Tuple[bool, str]:
+def save_processed_data_task(df: pd.DataFrame, config: Config, suffix: str = "processed", snapshot_month: str = "XXXX-XX") -> Tuple[bool, str]:
     """Save processed data to storage.
     
     Args:
@@ -162,10 +172,8 @@ def save_processed_data_task(df: pd.DataFrame, config: Config, suffix: str = "pr
         storage = StorageManager(config)
         
         # Use smart storage method for consistent path handling
-        file_path = f"crm_{suffix}.csv"
-        if suffix == "processed":
-            file_path = "crm_data_processed.csv"
-        
+        file_path = f"crm_{suffix}_{snapshot_month}.csv"
+
         saved_path = storage.save_dataframe(df, suffix, file_path)
         
         logger.info(f"💾 Data saved to: {saved_path}")
@@ -177,7 +185,7 @@ def save_processed_data_task(df: pd.DataFrame, config: Config, suffix: str = "pr
 
 
 @flow(name="crm_data_ingestion_flow", log_prints=True)
-def crm_data_ingestion_flow():
+def crm_data_ingestion_flow(snapshot_month: str):
     """Main CRM data ingestion flow."""
     logger = get_run_logger()
     logger.info("🚀 Starting CRM data ingestion pipeline")
@@ -185,39 +193,32 @@ def crm_data_ingestion_flow():
     # Get configuration
     config = get_config()
     
-    # Task 1: Download data
-    download_success, download_message = download_crm_data_task(config)
-    
-    if not download_success:
-        logger.error(f"Pipeline failed at download step: {download_message}")
-        return {"status": "failed", "step": "download", "error": download_message}
-    
-    # Task 2: Load and clean data
-    load_success, df_cleaned, load_metadata = load_and_clean_data_task(config)
+    # Task 1: Load and clean data
+    load_success, df_cleaned, df_accounts, df_products, df_sales_teams, load_metadata = load_and_clean_data_task(config, snapshot_month)
     
     if not load_success:
         logger.error(f"Pipeline failed at load step: {load_metadata.get('error', 'Unknown error')}")
         return {"status": "failed", "step": "load", "error": load_metadata.get('error')}
     
-    # Task 3: Save cleaned data
-    save_success, save_path = save_processed_data_task(df_cleaned, config, "processed")
+    # Task 2: Save cleaned data
+    save_success, save_path = save_processed_data_task(df_cleaned, config, "processed", snapshot_month)
     
     if not save_success:
         logger.error(f"Pipeline failed at save step: {save_path}")
         return {"status": "failed", "step": "save", "error": save_path}
     
-    # Task 4: Validate data quality
+    # Task 3: Validate data quality
     validation_passed, validation_results = validate_data_quality_task(df_cleaned, config)
     
-    # Task 5: Engineer features
-    features_success, df_features, features_metadata = engineer_features_task(df_cleaned, config)
+    # Task 4: Engineer features
+    features_success, df_features, features_metadata = engineer_features_task(df_cleaned, df_accounts, df_products, df_sales_teams, config)
     
     if not features_success:
         logger.error(f"Pipeline failed at feature engineering: {features_metadata.get('error', 'Unknown error')}")
         return {"status": "failed", "step": "features", "error": features_metadata.get('error')}
     
-    # Task 6: Save features
-    features_save_success, features_path = save_processed_data_task(df_features, config, "features")
+    # Task 5: Save features
+    features_save_success, features_path = save_processed_data_task(df_features, config, "features", snapshot_month)
     
     if not features_save_success:
         logger.error(f"Pipeline failed at features save step: {features_path}")
@@ -260,10 +261,10 @@ if __name__ == "__main__":
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-    
+    config = get_config()
     # Run the flow
-    result = crm_data_ingestion_flow()
-    
+    result = crm_data_ingestion_flow(snapshot_month=config.start_snapshot_month)
+
     if result["status"] == "success":
         print("\n✅ Pipeline completed successfully!")
         print(f"📊 Data processed: {result['data_shape']['features']}")

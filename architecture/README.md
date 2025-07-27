@@ -20,15 +20,36 @@ The solution follows a microservices-based architecture that supports both local
   - Model Registry: Version management and model metadata
   - Model Loader: Efficient model caching and loading
 
-### 3. ML Pipeline Layer
-- **Training Pipeline**: End-to-end model training workflow
-  - Data Ingestion: CRM data extraction and validation
-  - Data Preprocessing: Data cleaning and transformation
-  - Feature Engineering: Feature creation and selection
+### 3. ML Pipeline Layer ✅ **OPERATIONAL**
+- **Enhanced Data Acquisition Pipeline**: Advanced CRM data processing ✅
+  - Kaggle Dataset Integration: Automated download and validation
+  - Multi-Month Simulation: Time-series data enhancement
+  - Data Quality Validation: 0.93 quality score achievement
+  - S3 Storage Integration: MinIO-based data lake (7.5MB+ features)
+
+- **Monthly Processing Pipeline**: Feature engineering and validation ✅
+  - Feature Engineering: 23 ML-ready features from 8 original columns
+  - Data Validation: Comprehensive quality checks and schema compliance
+  - Storage Management: Intelligent local/S3 backend selection
+  - Pipeline Orchestration: Prefect 3.x workflow automation
+
+- **Training Pipeline**: ML model training workflow 🚧 **NEXT PHASE**
   - Model Training: ML model training with hyperparameter tuning
   - Model Evaluation: Performance assessment and validation
+  - Experiment Tracking: MLflow integration for model versioning
 
-### 4. Orchestration Layer
+### 4. Orchestration Layer ✅ **OPERATIONAL**
+- **Prefect 3.x Server**: Workflow orchestration and scheduling ✅
+  - Flow Management: Dual pipeline architecture (acquisition + processing)
+  - Task Scheduling: Automated workflow execution
+  - S3-Based Deployment: Complete source code stored in MinIO
+  - Monitoring Dashboard: Real-time workflow status and execution history
+
+- **Storage Orchestration**: Intelligent data management ✅
+  - MinIO S3 Storage: Production-ready object storage (8.8MB+ data)
+  - Automatic Backend Selection: Environment-aware storage routing
+  - Bucket Management: Organized data lake with versioning
+  - Data Lifecycle: Raw → Processed → Features → Models
 - **Prefect Workflow Orchestrator**: Manages ML workflows
   - Scheduler: Automated training and batch prediction scheduling
   - Task Executor: Individual pipeline task execution

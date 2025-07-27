@@ -1,6 +1,19 @@
 deployments:
+- description: CRM sales opportunities data acquisition pipeline (MinIO S3 storage)
+  entrypoint: src/pipelines/run_crm_acquisition.py:crm_data_acquisition_flow
+  name: crm-data-acquisition
+  parameters: {}
+  tags:
+  - data
+  - acquisition
+  - crm
+  - etl
+  - s3
+  - minio
+  work_pool:
+    name: default-agent-pool
 - description: CRM sales opportunities data ingestion pipeline (MinIO S3 storage)
-  entrypoint: src/pipelines/run_crm_pipeline.py:crm_data_ingestion_flow
+  entrypoint: src/pipelines/run_crm_ingestion.py:crm_data_ingestion_flow
   name: crm-data-ingestion
   parameters: {}
   schedule:

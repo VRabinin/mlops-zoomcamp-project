@@ -26,6 +26,15 @@
   - **Docker Mode**: Container execution uses S3 storage
   - **Manual Override**: `USE_S3_STORAGE=true` forces S3 mode
 
+### ✅ **Latest Updates (July 27, 2025)**
+- **🆕 Enhanced Data Acquisition**: New `crm_acquisition.py` module for advanced CRM data processing
+- **🆕 Dual Pipeline Architecture**: Both acquisition and ingestion flows operational
+  - `crm_data_acquisition_flow`: Enhanced data download and preprocessing
+  - `crm_data_ingestion_flow`: Monthly snapshot processing with feature engineering
+- **🆕 Active Production Data**: 7.5MB of processed CRM features stored in MinIO
+- **🆕 Automated Deployments**: S3-based Prefect deployment system fully operational
+- **🆕 Enhanced Configuration**: Improved YAML-based config with environment overrides
+
 ### ✅ **Major Achievement: Prefect 3.x Pipeline Operational**
 - **Data Volume**: Successfully processing 8,800+ CRM records
 - **Feature Engineering**: 23 ML-ready features from 8 original columns
@@ -33,6 +42,11 @@
 - **Orchestration**: Scheduled and manual execution support
 - **Management**: 11 comprehensive Makefile commands for workflow control
 - **Infrastructure**: Upgraded to Prefect 3.x with Docker Compose integration
+- **🆕 Dual Pipeline System**: Both acquisition and ingestion flows running
+  - **Acquisition Flow**: Enhanced data download with simulation features
+  - **Ingestion Flow**: Monthly snapshot processing for ML training
+- **🆕 Active Data Storage**: 7.5MB CRM features + 665KB processed data in MinIO
+- **🆕 S3 Flow Deployment**: Complete source code stored in MinIO for distributed execution
 
 ### Current Project Structure:
 ```
@@ -44,12 +58,18 @@ mlops-zoomcamp-project/
 ├── src/                       # Source code ✅ OPERATIONAL
 │   ├── data/                  # Data pipeline modules ✅ OPERATIONAL
 │   │   ├── ingestion/         # Kaggle CRM dataset ingestion ✅
+│   │   │   ├── crm_ingestion.py      # Monthly snapshot processing ✅
+│   │   │   └── crm_acquisition.py    # 🆕 Enhanced data acquisition ✅
 │   │   ├── validation/        # Data quality validation ✅
 │   │   ├── preprocessing/     # Feature engineering (23 features) ✅
 │   │   └── schemas/           # Data schema definitions ✅
 │   ├── pipelines/             # Prefect 3.x workflows ✅ OPERATIONAL
-│   │   ├── run_crm_pipeline.py      # Main CRM flow ✅
-│   │   └── deploy_crm_pipeline.py   # Deployment scripts ✅
+│   │   ├── run_crm_ingestion.py      # Monthly snapshot flow ✅
+│   │   ├── run_crm_acquisition.py    # 🆕 Enhanced acquisition flow ✅
+│   │   ├── deploy_crm_pipeline.py    # Legacy deployment ✅
+│   │   └── deploy_crm_pipelines.py   # 🆕 S3-based deployment ✅
+│   ├── utils/                 # 🆕 Storage management ✅
+│   │   └── storage.py         # Intelligent S3/local storage ✅
 │   └── config/                # Configuration management ✅
 ├── docker-compose.yml         # Local development services ✅
 ├── requirements.txt           # Python dependencies ✅
@@ -141,17 +161,18 @@ src/models/                   # 🚧 NEXT PHASE
 ```
 
 **Tasks:**
-- [ ] 🎯 Implement baseline models (using 23 engineered features)
+- [ ] 🎯 Implement baseline models (using 23 engineered features from operational pipeline)
 - [ ] 🎯 Integrate MLFlow experiment tracking with Prefect workflows
 - [ ] 🎯 Create model evaluation framework
 - [ ] 🎯 Add hyperparameter optimization (Optuna + Prefect)
 - [ ] 🎯 Create Prefect flows for model training orchestration
 
 **Available Infrastructure:**
-- ✅ Data Pipeline: 8,800 CRM records with 23 features ready for ML
+- ✅ Data Pipeline: 8,800 CRM records with 23 features ready for ML (7.5MB in MinIO)
 - ✅ MLFlow: Experiment tracking backend operational
 - ✅ Prefect 3.x: Workflow orchestration ready for training flows
 - ✅ Docker Services: PostgreSQL, Redis, MinIO operational
+- ✅ Feature Store: Processed CRM features at `data/features/crm_features_2017-05.csv`
 
 ## 📋 Development Priorities by Phase
 
@@ -332,8 +353,14 @@ make prefect-status-all     # Comprehensive status (server + deployments + runs)
 make prefect-help          # Show all 11 Prefect commands
 
 # ✅ UPDATED: Experience the operational pipeline
-make data-pipeline-flow     # Run CRM pipeline with Prefect orchestration
+make data-acquisition       # 🆕 Enhanced CRM data acquisition flow
+make data-pipeline-flow     # 🆕 Monthly snapshot processing flow  
 make prefect-ui            # View workflow execution in dashboard
+
+# ✅ UPDATED: MinIO Data Management
+make minio-ui              # 🆕 MinIO web console (http://localhost:9001)
+make minio-list-data       # 🆕 View 7.5MB+ of processed CRM data
+make minio-buckets         # 🆕 List all storage buckets
 
 # ✅ View architecture
 make architecture-start    # Architecture diagrams

@@ -65,8 +65,21 @@ def deploy_with_s3_storage():
                 
                 'deployments': [
                     {
+                        'name': 'crm-data-acquisition',
+                        'entrypoint': 'src/pipelines/run_crm_acquisition.py:crm_data_acquisition_flow',
+                        'description': 'CRM sales opportunities data acquisition pipeline (MinIO S3 storage)',
+                        'tags': ['data', 'acquisition', 'crm', 'etl', 's3', 'minio'],
+                        'parameters': {},
+                        'work_pool': {
+                            'name': config.prefect.work_pool
+                        },
+                        #'schedule': { Ad-hoc pipeline, no schedule needed
+                        #    'interval': 3600  # Every hour
+                        #}
+                    },
+                    {
                         'name': 'crm-data-ingestion',
-                        'entrypoint': 'src/pipelines/run_crm_pipeline.py:crm_data_ingestion_flow',
+                        'entrypoint': 'src/pipelines/run_crm_ingestion.py:crm_data_ingestion_flow',
                         'description': 'CRM sales opportunities data ingestion pipeline (MinIO S3 storage)',
                         'tags': ['data', 'ingestion', 'crm', 'etl', 's3', 'minio'],
                         'parameters': {},

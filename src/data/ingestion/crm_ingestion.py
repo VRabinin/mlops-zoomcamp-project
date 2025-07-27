@@ -15,7 +15,7 @@ from src.config.config import Config
 class CRMDataIngestion:
     """Handle CRM data ingestion from Kaggle dataset."""
     
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, snapshot_month: str = "XXXX-XX"):
         """Initialize CRM data ingestion.
         
         Args:
@@ -23,7 +23,8 @@ class CRMDataIngestion:
         """
         self.config = config
         self.kaggle_dataset = 'innocentmfa/crm-sales-opportunities'
-        
+        self.snapshot_month = snapshot_month
+
         # Initialize storage manager - this now handles all path logic
         self.storage = StorageManager(config)
         
@@ -36,44 +37,7 @@ class CRMDataIngestion:
         # Setup logging
         self.logger = logging.getLogger(__name__)
         self.logger.info(f"CRM Ingestion initialized - Storage: {self.storage.get_storage_info()}")
-    
-    def download_dataset(self) -> Tuple[bool, str]:
-        """Download CRM dataset from Kaggle.
         
-        Returns:
-            Tuple of (success, message/error).
-        """
-        try:
-            self.logger.info(f"Downloading dataset: {self.kaggle_dataset}")
-            
-            # Authenticate with Kaggle API
-            kaggle.api.authenticate()
-            with tempfile.TemporaryDirectory() as temp_dir:
-                # Download dataset to temporary directory
-                kaggle.api.dataset_download_files(
-                    self.kaggle_dataset,
-                    path=temp_dir,
-                    unzip=True
-                )
-                # Find and upload CSV files to S3
-                temp_path = Path(temp_dir)
-                csv_files = list(temp_path.glob("*.csv"))
-                    
-                if not csv_files:
-                    return False, "No CSV files found in downloaded dataset"
-                    
-                for csv_file in csv_files:
-                    # Read and upload to S3 using smart storage
-                    df = pd.read_csv(csv_file)
-                    self.storage.save_dataframe(df, 'raw', csv_file.name)
-            
-            return True, "Dataset downloaded successfully"
-            
-        except Exception as e:
-            error_msg = f"Failed to download dataset: {str(e)}"
-            self.logger.error(error_msg)
-            return False, error_msg
-    
     def find_csv_files(self) -> List[Path]:
         """Find CSV files in the raw data directory.
         
@@ -106,41 +70,15 @@ class CRMDataIngestion:
             for csv_file in csv_files:
                 file_name = csv_file.name.lower()
                 # Prioritize sales_pipeline.csv or similar main data files
-                if 'sales_pipeline' in file_name or 'pipeline' in file_name:
+                if f'sales_pipeline_enhanced_{self.snapshot_month}' in file_name:
                     file_path = csv_file
                     break
-                elif any(keyword in file_name for keyword in ['crm', 'sales', 'opportunities', 'data']):
-                    # Exclude small files that are likely metadata
-                    if self.storage.use_s3:
-                        # For S3, we can't easily check file size, so use name patterns
-                        if 'dictionary' not in file_name and 'readme' not in file_name:
-                            file_path = csv_file
-                    else:
-                        # For local files, check file size
-                        if self.storage.file_exists('raw', csv_file.name):
-                            # Since we can't easily check file size in abstracted storage,
-                            # use name patterns as primary filter
-                            file_path = csv_file
-            
-            # If no specific file found, use the largest file
-            if file_path is None:
-                if self.storage.use_s3:
-                    # For S3, just use the first non-dictionary file
-                    for csv_file in csv_files:
-                        if 'dictionary' not in csv_file.name.lower():
-                            file_path = csv_file
-                            break
-                else:
-                    # For local files, try to find the largest file by checking existence
-                    # Since we're abstracting storage, just pick the first reasonable file
-                    for csv_file in csv_files:
-                        if 'dictionary' not in csv_file.name.lower() and 'readme' not in csv_file.name.lower():
-                            file_path = csv_file
-                            break
             
             if file_path is None:
-                file_path = csv_files[0]  # Fallback to first file
-        
+                raise FileNotFoundError(
+                    f"Snapshot file sales_pipeline_enhanced_{self.snapshot_month}.csv not found. "
+                    "Please ensure the file is named correctly or specify the path."
+                )
         self.logger.info(f"Loading data from: {file_path}")
         
         try:
@@ -251,7 +189,7 @@ class CRMDataIngestion:
         
         return max(0.0, min(1.0, score))
     
-    def save_processed_data(self, df: pd.DataFrame, filename: str = "crm_data_processed.csv") -> str:
+    def save_processed_data(self, df: pd.DataFrame, filename: str = "crm_data_processed_XXXX-XX.csv") -> str:
         """Save processed data to storage.
         
         Args:
@@ -274,19 +212,12 @@ class CRMDataIngestion:
             Tuple of (success, dataframe, metadata).
         """
         metadata = {
-            'dataset': self.kaggle_dataset,
             'timestamp': pd.Timestamp.now(),
             'steps_completed': []
         }
         
-        try:
-            # Step 1: Download dataset
-            success, message = self.download_dataset()
-            if not success:
-                return False, pd.DataFrame(), {**metadata, 'error': message}
-            metadata['steps_completed'].append('download')
-            
-            # Step 2: Load data
+        try:           
+            # Step 1: Load data
             df = self.load_data()
             metadata['raw_shape'] = df.shape
             metadata['raw_columns'] = list(df.columns)
@@ -308,7 +239,7 @@ class CRMDataIngestion:
             metadata['steps_completed'].append('validate')
             
             # Step 5: Save processed data
-            saved_path = self.save_processed_data(df_cleaned)
+            saved_path = self.save_processed_data(df_cleaned, filename=f"crm_data_processed_{self.snapshot_month}.csv")
             metadata['output_path'] = saved_path
             metadata['steps_completed'].append('save')
             
@@ -333,7 +264,7 @@ def main():
     )
     # Get configuration
     config = get_config()
-    ingestion = CRMDataIngestion(config)
+    ingestion = CRMDataIngestion(config, config.first_snapshot_month)
     
     # Run ingestion
     success, df, metadata = ingestion.run_ingestion()

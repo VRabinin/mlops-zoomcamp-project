@@ -1,5 +1,6 @@
 """Storage utilities for file and S3 operations."""
 
+from fnmatch import fnmatch
 import os
 import io
 import logging
@@ -583,6 +584,63 @@ class StorageManager:
         """
         return self.ensure_path_exists(data_type)
 
+    def cleanup(self, data_type: str, filename_mask: str):
+        """Cleanup files matching a specific pattern in the storage.
+        
+        Args:
+            data_type: Type of data ('raw', 'processed', 'features', etc.)
+            filename_mask: Optional list of filename patterns to match for deletion
+        """
+        if self.use_s3:
+            #TODO: Fix non-working cleanup
+            bucket = self.get_bucket_for_data_type(data_type)
+            prefix = self.resolve_path(data_type).lstrip('/')
+            self._cleanup_s3(bucket, prefix, filename_mask)
+        else:
+            local_path = self.resolve_path(data_type)
+            self._cleanup_local(local_path, filename_mask)
+
+    def _cleanup_local(self, path: Union[str, Path], filename_mask: str = None):
+        """Cleanup local files matching a specific pattern.
+        
+        Args:
+            path: Path to the directory containing files to delete
+            filename_mask: Optional list of filename patterns to match for deletion
+        """
+        if filename_mask is None:
+            filename_mask = ["*"]
+
+        for file in Path(path).glob(filename_mask):
+            try:
+                file.unlink(missing_ok=True)
+                self.logger.info(f"Deleted local file: {file}")
+            except Exception as e:
+                self.logger.error(f"Failed to delete local file {file}: {str(e)}")
+
+    def _cleanup_s3(self, bucket: str, prefix: str, filename_mask: str):
+        """Cleanup S3 files matching a specific pattern.
+        
+        Args:
+            bucket: S3 bucket name
+            prefix: S3 key prefix to filter objects
+            filename_mask: Optional list of filename patterns to match for deletion
+        """
+        if filename_mask is None:
+            filename_mask = ["*"]
+
+        try:
+            response = self.s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+            if 'Contents' not in response:
+                return
+            
+            for obj in response['Contents']:
+                key = obj['Key']
+                if fnmatch.fnmatch(Path(key).name, filename_mask):
+                    self.s3_client.delete_object(Bucket=bucket, Key=key)
+                    self.logger.info(f"Deleted S3 object: {key}")
+                    
+        except Exception as e:
+            self.logger.error(f"Failed to cleanup S3 files: {str(e)}")
 
 def create_storage_manager(config: Config) -> StorageManager:
     """Factory function to create storage manager.

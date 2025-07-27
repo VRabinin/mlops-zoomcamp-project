@@ -62,19 +62,25 @@ architecture-stop: ## Stop architecture viewer
 	cd architecture && docker compose down
 
 # Data Pipeline - direct start
-data-download: ## Download CRM dataset from Kaggle
+data-acquisition: ## Download CRM dataset from Kaggle
+	@echo "Downloading CRM dataset..."
+	python -m src.data.ingestion.crm_acquisition
+
+data-ingestion: ## Download CRM dataset from Kaggle
 	@echo "Downloading CRM dataset..."
 	python -m src.data.ingestion.crm_ingestion
 
-data-validate: ## Validate downloaded data
+data-validation: ## Validate downloaded data
 	@echo "Validating data quality..."
 	python -m src.data.validation.run_validation
 
-data-process: ## Process raw data into features
+data-preprocess: ## Process raw data into features
 	@echo "Processing data..."
 	python -m src.data.preprocessing.feature_engineering
 
-data-pipeline: data-download data-validate data-process ## Run complete data pipeline
+data-pipeline: data-download data-validate data-process ## Run complete data pipeline (excluding acquisition)
+	@echo "Running complete data pipeline..."
+	python -m src.data.pipeline.run_pipeline
 
 # MinIO S3 Management
 minio-ui: ## Open MinIO web console
@@ -163,19 +169,34 @@ prefect-deploy-crm: ## Deploy CRM ingestion flow with S3 storage
 #from src.pipelines.deploy_crm_pipeline import deploy_with_s3_storage; \
 #deploy_with_s3_storage()"
 
-prefect-run-crm: ## Run CRM ingestion flow directly (for testing)
+prefect-run-acquisition: ## Run CRM ingestion flow directly (for testing)
 	@echo "Running CRM ingestion flow locally..."
 	@echo "Setting Prefect API URL..."
 	@export PREFECT_API_URL=http://localhost:4200/api && \
-	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_crm_pipeline.py
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_crm_acquisition.py
+
+prefect-run-ingestion: ## Run CRM ingestion flow directly (for testing)
+	@echo "Running CRM ingestion flow locally..."
+	@echo "Setting Prefect API URL..."
+	@export PREFECT_API_URL=http://localhost:4200/api && \
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_crm_ingestion.py
+
+prefect-deploy: ## Deploy CRM ingestion flow with S3 storage
+	@echo "Deploying CRM ingestion flow with S3 storage..."
+	@export PREFECT_API_URL=http://localhost:4200/api && \
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/deploy_crm_pipelines.py
 
 prefect-deployments: ## List all Prefect deployments
 	@echo "Listing Prefect deployments..."
 	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment ls
 
-prefect-run-deployment: ## Run the CRM deployment manually
-	@echo "Running CRM deployment manually..."
-	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment run crm_data_ingestion_flow/crm-data-ingestion
+#prefect-run-acquisition-deployed: ## Run the CRM acquisition deployment manually
+#	@echo "Running CRM acquisition deployment manually..."
+#	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment run crm_data_acquisition_flow/crm-data-acquisition
+
+#prefect-run-ingestion-deployed: ## Run the CRM deployment manually
+#	@echo "Running CRM deployment manually..."
+#	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment run crm_data_ingestion_flow/crm-data-ingestion
 
 prefect-flows: ## List all flow runs
 	@echo "Listing Prefect flow runs..."

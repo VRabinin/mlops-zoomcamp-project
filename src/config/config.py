@@ -73,6 +73,7 @@ class StorageConfig:
 @dataclass
 class Config:
     """Main configuration class."""
+    first_snapshot_month: str = "XXXX-XX" # Placeholder for actual month
     data_path: DataPathConfig = field(default_factory=DataPathConfig)
     mlflow: MLflowConfig = field(default_factory=MLflowConfig)
     prefect: PrefectConfig = field(default_factory=PrefectConfig)
@@ -167,7 +168,7 @@ def get_config(config_path: Optional[str] = None) -> Config:
                     setattr(config.storage, key, value)
         
         # Top-level config
-        for key in ['environment', 'debug', 'log_level', 'database_url', 'redis_url']:
+        for key in ['first_snapshot_month', 'environment', 'debug', 'log_level', 'database_url', 'redis_url']:
             if key in yaml_config:
                 setattr(config, key, yaml_config[key])
     
