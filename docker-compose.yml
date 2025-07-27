@@ -82,7 +82,7 @@ services:
     command: >
       /bin/sh -c "
       echo 'Installing additional dependencies...';
-      pip install prefect-aws boto3 kaggle pandas scikit-learn;
+      pip install prefect-aws boto3 kaggle pandas scikit-learn mlflow;
       echo 'Starting Prefect server...';
       prefect server start --host 0.0.0.0 --port ${PREFECT_PORT:-4200};
       "
