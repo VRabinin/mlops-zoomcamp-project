@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from src.config.config import get_config
 from src.utils.storage import StorageManager
 from src.monitoring.drift_monitor import CRMDriftMonitor
+from src.utils.prefect_client import PrefectFlowManager, CRMDeployments, format_flow_run_state, format_duration
 import streamlit.components.v1 as components
 
 class EvidentiallyDashboard:
@@ -27,6 +28,7 @@ class EvidentiallyDashboard:
         self.config = get_config()
         self.storage = StorageManager(self.config)
         self.drift_monitor = CRMDriftMonitor(self.config)
+        self.prefect_manager = PrefectFlowManager()
     
     def show_monitoring_overview(self):
         """Display monitoring overview with key metrics."""
@@ -55,19 +57,12 @@ class EvidentiallyDashboard:
         while True:
             # List monitoring result files
             files = self.storage.list_files("monitoring_results", "monitoring_results_*.json")
-            st.info(self.storage.list_files("monitoring_results", "monitoring_results_*.json"))
-            st.info(self.storage.resolve_path("monitoring_results"))
             files = self.storage._list_files_s3(self.storage.config.storage.buckets.get('data_lake'), self.storage.resolve_path("monitoring_results"))
             if not files:
                 return None
-            
             # Sort by filename to get the latest
             latest_file = sorted(files)[-1]
-            
             # Load the latest results
-            st.info(f"Loading latest monitoring results from: {latest_file}")
-            st.info(self.storage.get_bucket_for_data_type("monitoring_results"))
-            st.info(self.storage.get_s3_path("monitoring_results", latest_file))
             content = self.storage.load_text_file("monitoring_results", str(latest_file).split('/')[-1])
             return json.loads(content)
 
@@ -299,14 +294,32 @@ class EvidentiallyDashboard:
             st.error(f"Error displaying historical trends: {e}")
     
     def show_monitoring_controls(self):
-        """Display controls for running monitoring."""
+        """Display controls for running monitoring via Prefect server."""
         st.subheader("🎛️ Monitoring Controls")
+        
+        # Check Prefect server status first
+        is_healthy, health_msg = self.prefect_manager.check_server_health()
+        if not is_healthy:
+            st.error(health_msg)
+            st.info("💡 **Troubleshooting:** Ensure Prefect server is running with `make application-start`")
+            return
+        
+        st.success(health_msg)
+        
+        # Get available deployments
+        deployments = self.prefect_manager.get_deployments_sync()
+        deployment_names = [d['name'] for d in deployments]
+        
+        if not deployments:
+            st.warning("⚠️ No Prefect deployments found")
+            st.info("💡 **Setup required:** Deploy flows first with `make prefect-deploy`")
+            return
         
         col1, col2 = st.columns(2)
         
         with col1:
             st.write("**Create Reference Data**")
-            st.write("Create baseline dataset for drift comparison")
+            st.write("Trigger reference data creation flow on Prefect server")
             
             # Get available periods
             try:
@@ -319,49 +332,190 @@ class EvidentiallyDashboard:
             ref_period = st.selectbox("Reference Period", periods, key="ref_period")
             sample_size = st.number_input("Sample Size", min_value=100, max_value=5000, value=1000, key="ref_sample")
             
-            if st.button("Create Reference Data", key="create_ref"):
-                with st.spinner("Creating reference data..."):
-                    try:
-                        success, message = self.drift_monitor.create_reference_data(ref_period, sample_size)
-                        if success:
-                            st.success(f"✅ {message}")
-                        else:
-                            st.error(f"❌ {message}")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+            # Check if reference data deployment is available
+            ref_deployment_available = CRMDeployments.REFERENCE_DATA in deployment_names
+            
+            if ref_deployment_available:
+                if st.button("🚀 Create Reference Data (Prefect)", key="create_ref_prefect"):
+                    with st.spinner("Triggering reference data creation flow..."):
+                        try:
+                            parameters = {
+                                "reference_period": ref_period,
+                                "sample_size": sample_size
+                            }
+                            
+                            success, flow_run_id, message = self.prefect_manager.trigger_deployment_sync(
+                                CRMDeployments.REFERENCE_DATA, parameters
+                            )
+                            
+                            if success:
+                                st.success(message)
+                                st.info(f"🔍 **Track progress:** Flow run ID `{flow_run_id}`")
+                                st.info(f"🌐 **Monitor in UI:** [Prefect Dashboard](http://localhost:4200/flow-runs)")
+                                
+                                # Store flow run ID in session state for tracking
+                                if 'flow_runs' not in st.session_state:
+                                    st.session_state.flow_runs = []
+                                st.session_state.flow_runs.append({
+                                    'id': flow_run_id,
+                                    'name': 'Reference Data Creation',
+                                    'triggered_at': datetime.now()
+                                })
+                            else:
+                                st.error(message)
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+            else:
+                st.warning(f"⚠️ Deployment '{CRMDeployments.REFERENCE_DATA}' not found")
+                st.info("💡 Deploy flows first: `make prefect-deploy`")
         
         with col2:
             st.write("**Run Drift Monitoring**")
-            st.write("Compare current data against reference")
+            st.write("Trigger drift monitoring flow on Prefect server")
             
             current_period = st.selectbox("Current Period", periods, index=1 if len(periods) > 1 else 0, key="current_period")
-            ref_period_monitor_var = st.selectbox("Reference Period", periods, key="ref_period_monitor")
-
-            if st.button("Run Monitoring", key="run_monitoring"):
-                with st.spinner("Running drift monitoring..."):
-                    try:
-                        # Generate current predictions
-                        pred_success, pred_msg = self.drift_monitor.generate_current_predictions(current_period)
-                        if not pred_success:
-                            st.error(f"Failed to generate predictions: {pred_msg}")
-                            return
-                        
-                        # Detect drift
-                        drift_success, drift_results = self.drift_monitor.detect_drift(ref_period_monitor_var, current_period)
-                        if drift_success:
-                            st.success("✅ Monitoring completed successfully!")
+            ref_period_monitor = st.selectbox("Reference Period", periods, key="ref_period_monitor")
+            
+            # Check if drift monitoring deployment is available
+            drift_deployment_available = CRMDeployments.DRIFT_MONITORING in deployment_names
+            
+            if drift_deployment_available:
+                if st.button("🚀 Run Monitoring (Prefect)", key="run_monitoring_prefect"):
+                    with st.spinner("Triggering drift monitoring flow..."):
+                        try:
+                            parameters = {
+                                "current_month": current_period,
+                                "reference_period": ref_period_monitor
+                            }
                             
-                            # Show quick results
-                            if drift_results.get('drift_detected'):
-                                st.warning(f"🚨 Drift detected! Alert level: {drift_results.get('alert_level')}")
+                            success, flow_run_id, message = self.prefect_manager.trigger_deployment_sync(
+                                CRMDeployments.DRIFT_MONITORING, parameters
+                            )
+                            
+                            if success:
+                                st.success(message)
+                                st.info(f"🔍 **Track progress:** Flow run ID `{flow_run_id}`")
+                                st.info(f"🌐 **Monitor in UI:** [Prefect Dashboard](http://localhost:4200/flow-runs)")
+                                
+                                # Store flow run ID in session state for tracking
+                                if 'flow_runs' not in st.session_state:
+                                    st.session_state.flow_runs = []
+                                st.session_state.flow_runs.append({
+                                    'id': flow_run_id,
+                                    'name': 'Drift Monitoring',
+                                    'triggered_at': datetime.now()
+                                })
+                                
+                                # Auto-refresh monitoring results after a delay
+                                st.info("ℹ️ Monitoring results will be available after flow completion")
                             else:
-                                st.info("ℹ️ No significant drift detected")
-
-                            st.rerun()  # Refresh to show new results
+                                st.error(message)
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+            else:
+                st.warning(f"⚠️ Deployment '{CRMDeployments.DRIFT_MONITORING}' not found")
+                st.info("💡 Deploy flows first: `make prefect-deploy`")
+        
+        # Show recent flow runs
+        self.show_recent_flow_runs()
+        
+        # Show deployment status
+        self.show_deployment_status(deployments)
+    
+    def show_recent_flow_runs(self):
+        """Display recent flow runs and their status."""
+        st.subheader("🏃 Recent Flow Runs")
+        
+        try:
+            flow_runs = self.prefect_manager.get_recent_flow_runs_sync(limit=10)
+            
+            if not flow_runs:
+                st.info("No recent flow runs found")
+                return
+            
+            # Create a nice table of flow runs
+            for run in flow_runs:
+                with st.expander(f"{run['flow_name']} - {format_flow_run_state(run['state_type'], run['state_name'])}"):
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.write(f"**Flow:** {run['flow_name']}")
+                        st.write(f"**Run ID:** `{run['id'][:8]}...`")
+                        st.write(f"**Created:** {run['created'].strftime('%Y-%m-%d %H:%M:%S') if run['created'] else 'N/A'}")
+                    
+                    with col2:
+                        st.write(f"**Status:** {format_flow_run_state(run['state_type'], run['state_name'])}")
+                        if run['start_time']:
+                            st.write(f"**Started:** {run['start_time'].strftime('%H:%M:%S')}")
+                        if run['end_time']:
+                            st.write(f"**Ended:** {run['end_time'].strftime('%H:%M:%S')}")
+                    
+                    with col3:
+                        if run['total_run_time']:
+                            st.write(f"**Duration:** {format_duration(run['total_run_time'])}")
+                        
+                        # Show parameters if any
+                        if run['parameters']:
+                            st.write("**Parameters:**")
+                            for key, value in run['parameters'].items():
+                                st.write(f"  • {key}: {value}")
+                        
+                        # Cancel button for running flows
+                        if run['state_type'] == 'RUNNING':
+                            if st.button(f"🛑 Cancel", key=f"cancel_{run['id'][:8]}"):
+                                success, message = self.prefect_manager.cancel_flow_run_sync(run['id'])
+                                if success:
+                                    st.success(message)
+                                    st.rerun()
+                                else:
+                                    st.error(message)
+        
+        except Exception as e:
+            st.error(f"Error fetching flow runs: {e}")
+    
+    def show_deployment_status(self, deployments: List[Dict[str, Any]]):
+        """Display deployment status and information."""
+        st.subheader("📋 Available Deployments")
+        
+        if not deployments:
+            st.warning("No deployments found")
+            return
+        
+        # Group deployments by type
+        crm_deployments = [d for d in deployments if any(crm_name in d['name'] for crm_name in [
+            'crm', 'monthly', 'reference', 'drift', 'acquisition', 'ingestion'
+        ])]
+        
+        if crm_deployments:
+            st.write("**CRM MLOps Deployments:**")
+            for deployment in crm_deployments:
+                col1, col2, col3 = st.columns([2, 1, 1])
+                
+                with col1:
+                    st.write(f"**{deployment['name']}**")
+                    if deployment['description']:
+                        st.caption(deployment['description'])
+                
+                with col2:
+                    schedule_status = "📅 Scheduled" if deployment['is_schedule_active'] else "🚫 Manual"
+                    st.write(schedule_status)
+                
+                with col3:
+                    if st.button(f"▶️ Run", key=f"run_{deployment['name']}"):
+                        # Trigger deployment without parameters
+                        success, flow_run_id, message = self.prefect_manager.trigger_deployment_sync(deployment['name'])
+                        if success:
+                            st.success(f"✅ Triggered: {deployment['name']}")
+                            st.info(f"Run ID: {flow_run_id}")
                         else:
-                            st.error(f"❌ Monitoring failed: {drift_results}")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                            st.error(message)
+        
+        # Show other deployments if any
+        other_deployments = [d for d in deployments if d not in crm_deployments]
+        if other_deployments:
+            with st.expander("Other Deployments"):
+                for deployment in other_deployments:
+                    st.write(f"• **{deployment['name']}** - {deployment.get('description', 'No description')}")
     
     def show_evidently_reports(self):
         """Display available Evidently HTML reports."""

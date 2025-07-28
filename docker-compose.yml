@@ -200,6 +200,7 @@ services:
       - S3_RAW_DATA_PATH=${S3_RAW_DATA_PATH:-data/raw}
       - S3_PROCESSED_DATA_PATH=${S3_PROCESSED_DATA_PATH:-data/processed}
       - S3_FEATURES_DATA_PATH=${S3_FEATURES_DATA_PATH:-data/features}
+      - PREFECT_API_URL=http://mlops-prefect-server:4200/api
     depends_on:
       - mlflow
       - minio

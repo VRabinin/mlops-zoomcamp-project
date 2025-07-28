@@ -19,6 +19,7 @@ from pathlib import Path
 import sys
 import requests
 import os
+from typing import Dict, Any, List, Optional
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -28,6 +29,7 @@ sys.path.append(str(project_root))
 try:
     from src.config.config import get_config
     from src.utils.storage import StorageManager
+    from src.utils.prefect_client import PrefectFlowManager, CRMDeployments, format_flow_run_state, format_duration
     CONFIG_AVAILABLE = True
 except ImportError:
     CONFIG_AVAILABLE = False
@@ -602,6 +604,313 @@ def display_prediction_results(prediction_data, model):
     except Exception as e:
         st.error(f"Error making prediction: {e}")
 
+def show_prefect_workflow_controls():
+    """Show Prefect workflow controls for running MLOps pipelines."""
+    st.header("Workflow Management")
+    st.write("Control MLOps pipelines through Prefect server deployments.")
+    
+    if not CONFIG_AVAILABLE:
+        st.error("❌ Configuration not available - cannot connect to Prefect server")
+        return
+    
+    # Initialize Prefect manager
+    try:
+        prefect_manager = PrefectFlowManager()
+    except Exception as e:
+        st.error(f"❌ Error initializing Prefect client: {e}")
+        return
+    
+    # Check Prefect server health
+    is_healthy, health_msg = prefect_manager.check_server_health()
+    st.write("**Prefect Server Status:**", health_msg)
+    
+    if not is_healthy:
+        st.info("💡 **Troubleshooting:** Ensure Prefect server is running with `make application-start`")
+        return
+    
+    # Get deployments
+    try:
+        deployments = prefect_manager.get_deployments_sync()
+        if not deployments:
+            st.warning("⚠️ No Prefect deployments found")
+            st.info("💡 **Setup required:** Deploy flows first with `make prefect-deploy`")
+            return
+    except Exception as e:
+        st.error(f"❌ Error fetching deployments: {e}")
+        return
+    
+    # Create workflow control sections
+    tab1, tab2, tab3 = st.tabs(["🚀 Run Pipelines", "📊 Flow Status", "⚙️ Deployments"])
+    
+    with tab1:
+        show_pipeline_controls(prefect_manager, deployments)
+    
+    with tab2:
+        show_flow_status(prefect_manager)
+    
+    with tab3:
+        show_deployment_info(prefect_manager, deployments)
+
+
+def show_pipeline_controls(prefect_manager: 'PrefectFlowManager', deployments: List[Dict[str, Any]]):
+    """Show controls for running different MLOps pipelines."""
+    st.subheader("🚀 Pipeline Execution")
+    
+    deployment_names = [d['name'] for d in deployments]
+    
+    # Data Acquisition Pipeline
+    st.write("### 📥 Data Acquisition")
+    col1, col2 = st.columns([2, 2])
+    with col1:
+        st.write("Download and acquire raw CRM sales data from Kaggle.")
+        # Parameters for data acquisition
+        if CONFIG_AVAILABLE:
+            try:
+                config = get_config()
+                storage_manager = StorageManager(config)
+                feature_files = storage_manager.list_files("features", "crm_features_*.csv")
+                periods = [f.split('_')[-1].replace('.csv', '') for f in feature_files]
+                periods = sorted(list(set(periods)))
+                # Add common periods if none found
+                if not periods:
+                    periods = ["2017-05", "2017-06", "2017-07"]
+            except:
+                periods = ["2017-05", "2017-06", "2017-07"]
+        else:
+            periods = ["2017-05", "2017-06", "2017-07"]
+        
+        snapshot_month = st.selectbox("Snapshot Month", periods, key="acquisition_snapshot_month")
+    
+    with col2:
+        st.write("")  # Spacer
+        st.write("")  # Spacer  
+        if CRMDeployments.DATA_ACQUISITION in deployment_names:
+            if st.button("🚀 Run Data Acquisition", key="run_acquisition"):
+                parameters = {"snapshot_month": snapshot_month}
+                trigger_flow(prefect_manager, CRMDeployments.DATA_ACQUISITION, "Data Acquisition", parameters)
+        else:
+            st.warning("❌ Not deployed")
+    
+    # Data Ingestion Pipeline
+    st.write("### 🔄 Data Ingestion")
+    col1, col2 = st.columns([2, 2])
+    with col1:
+        st.write("Process and validate acquired data, create features.")
+        ingestion_month = st.selectbox("Processing Month", periods, key="ingestion_snapshot_month")
+    with col2:
+        st.write("")  # Spacer
+        st.write("")  # Spacer
+        if CRMDeployments.DATA_INGESTION in deployment_names:
+            if st.button("🚀 Run Data Ingestion", key="run_ingestion"):
+                parameters = {"snapshot_month": ingestion_month}
+                trigger_flow(prefect_manager, CRMDeployments.DATA_INGESTION, "Data Ingestion", parameters)
+        else:
+            st.warning("❌ Not deployed")
+    
+    # Model Training Pipeline
+    st.write("### 🎯 Model Training")
+    col1, col2 = st.columns([2, 2])
+    with col1:
+        st.write("Train monthly win probability prediction model.")
+        training_month = st.selectbox("Training Month", periods, key="training_snapshot_month")
+    with col2:
+        st.write("")  # Spacer
+        st.write("")  # Spacer
+        if CRMDeployments.MONTHLY_TRAINING in deployment_names:
+            if st.button("🚀 Run Model Training", key="run_training"):
+                parameters = {"current_month": training_month}
+                trigger_flow(prefect_manager, CRMDeployments.MONTHLY_TRAINING, "Model Training", parameters)
+        else:
+            st.warning("❌ Not deployed")
+    
+    # Reference Data Creation
+    st.write("### 📊 Reference Data Creation")
+    col1, col2 = st.columns([2, 2])
+    with col1:
+        st.write("Create reference dataset for drift monitoring.")
+        
+        # Get available periods for parameters
+        if CONFIG_AVAILABLE:
+            try:
+                config = get_config()
+                storage_manager = StorageManager(config)
+                feature_files = storage_manager.list_files("features", "crm_features_*.csv")
+                periods = [f.split('_')[-1].replace('.csv', '') for f in feature_files]
+                periods = sorted(list(set(periods)))
+            except:
+                periods = ["2017-05", "2017-06", "2017-07"]
+        else:
+            periods = ["2017-05", "2017-06", "2017-07"]
+        
+        ref_period = st.selectbox("Reference Period", periods, key="ref_period_workflow")
+        sample_size = st.number_input("Sample Size", min_value=100, max_value=5000, value=1000, key="ref_sample_workflow")
+    
+    with col2:
+        st.write("")  # Spacer
+        st.write("")  # Spacer
+        if CRMDeployments.REFERENCE_DATA in deployment_names:
+            if st.button("🚀 Create Reference Data", key="run_reference"):
+                parameters = {
+                    "reference_period": ref_period,
+                    "sample_size": sample_size
+                }
+                trigger_flow(prefect_manager, CRMDeployments.REFERENCE_DATA, "Reference Data Creation", parameters)
+        else:
+            st.warning("❌ Not deployed")
+    
+    # Drift Monitoring
+    st.write("### 🔍 Drift Monitoring")
+    col1, col2 = st.columns([2, 2])
+    with col1:
+        st.write("Analyze model drift and data quality.")
+        current_period = st.selectbox("Current Period", periods, index=1 if len(periods) > 1 else 0, key="current_period_workflow")
+        ref_period_monitor = st.selectbox("Reference Period", periods, key="ref_period_monitor_workflow")
+    
+    with col2:
+        st.write("")  # Spacer
+        st.write("")  # Spacer
+        if CRMDeployments.DRIFT_MONITORING in deployment_names:
+            if st.button("🚀 Run Drift Monitoring", key="run_drift"):
+                parameters = {
+                    "current_month": current_period,
+                    "reference_period": ref_period_monitor
+                }
+                trigger_flow(prefect_manager, CRMDeployments.DRIFT_MONITORING, "Drift Monitoring", parameters)
+        else:
+            st.warning("❌ Not deployed")
+
+
+def show_flow_status(prefect_manager: 'PrefectFlowManager'):
+    """Show recent flow runs and their status."""
+    st.subheader("📊 Recent Flow Runs")
+    
+    try:
+        flow_runs = prefect_manager.get_recent_flow_runs_sync(limit=15)
+        
+        if not flow_runs:
+            st.info("No recent flow runs found")
+            return
+        
+        # Create a dataframe for better display
+        runs_data = []
+        for run in flow_runs:
+            runs_data.append({
+                'Flow': run['flow_name'],
+                'Status': format_flow_run_state(run['state_type'], run['state_name']),
+                'Started': run['start_time'].strftime('%m-%d %H:%M') if run['start_time'] else 'N/A',
+                'Duration': format_duration(run['total_run_time']) if run['total_run_time'] else 'N/A',
+                'Run ID': run['id'][:8] + '...'
+            })
+        
+        runs_df = pd.DataFrame(runs_data)
+        st.dataframe(runs_df, use_container_width=True)
+        
+        # Show detailed view for running flows
+        running_flows = [run for run in flow_runs if run['state_type'] == 'RUNNING']
+        if running_flows:
+            st.write("### 🏃 Currently Running Flows")
+            for run in running_flows:
+                with st.expander(f"{run['flow_name']} - Running"):
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.write(f"**Started:** {run['start_time'].strftime('%Y-%m-%d %H:%M:%S') if run['start_time'] else 'N/A'}")
+                        st.write(f"**Run ID:** `{run['id']}`")
+                    
+                    with col2:
+                        if run['parameters']:
+                            st.write("**Parameters:**")
+                            for key, value in run['parameters'].items():
+                                st.write(f"  • {key}: {value}")
+                    
+                    with col3:
+                        if st.button(f"🛑 Cancel Flow", key=f"cancel_{run['id'][:8]}"):
+                            success, message = prefect_manager.cancel_flow_run_sync(run['id'])
+                            if success:
+                                st.success(message)
+                                st.rerun()
+                            else:
+                                st.error(message)
+        
+        # Refresh button
+        if st.button("🔄 Refresh Status"):
+            st.rerun()
+    
+    except Exception as e:
+        st.error(f"Error fetching flow runs: {e}")
+
+
+def show_deployment_info(prefect_manager: 'PrefectFlowManager', deployments: List[Dict[str, Any]]):
+    """Show deployment information and management."""
+    st.subheader("⚙️ Deployment Information")
+    
+    if not deployments:
+        st.info("No deployments found")
+        return
+    
+    # Group deployments by type
+    crm_deployments = [d for d in deployments if any(crm_name in d['name'] for crm_name in [
+        'crm', 'monthly', 'reference', 'drift', 'acquisition', 'ingestion'
+    ])]
+    
+    if crm_deployments:
+        st.write("**CRM MLOps Deployments:**")
+        
+        for deployment in crm_deployments:
+            with st.expander(f"📋 {deployment['name']}"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.write(f"**Flow Name:** {deployment['flow_name']}")
+                    st.write(f"**Description:** {deployment.get('description', 'No description')}")
+                    st.write(f"**Created:** {deployment['created'].strftime('%Y-%m-%d %H:%M') if deployment['created'] else 'N/A'}")
+                    st.write(f"**Updated:** {deployment['updated'].strftime('%Y-%m-%d %H:%M') if deployment['updated'] else 'N/A'}")
+                
+                with col2:
+                    schedule_status = "📅 Scheduled" if deployment['is_schedule_active'] else "🚫 Manual Only"
+                    st.write(f"**Schedule:** {schedule_status}")
+                    
+                    if deployment['tags']:
+                        st.write("**Tags:**")
+                        for tag in deployment['tags']:
+                            st.write(f"  • {tag}")
+                    
+                    # Quick run button
+                    if st.button(f"▶️ Quick Run", key=f"quick_run_{deployment['name']}"):
+                        trigger_flow(prefect_manager, deployment['name'], deployment['flow_name'])
+
+
+def trigger_flow(prefect_manager: 'PrefectFlowManager', deployment_name: str, display_name: str, parameters: Dict[str, Any] = None):
+    """Trigger a flow and show the result."""
+    with st.spinner(f"Triggering {display_name} flow..."):
+        try:
+            success, flow_run_id, message = prefect_manager.trigger_deployment_sync(deployment_name, parameters)
+            
+            if success:
+                st.success(message)
+                st.info(f"🔍 **Track progress:** Flow run ID `{flow_run_id}`")
+                st.info(f"🌐 **Monitor in UI:** [Prefect Dashboard](http://localhost:4200/flow-runs)")
+                
+                # Store in session state for quick access
+                if 'recent_flow_runs' not in st.session_state:
+                    st.session_state.recent_flow_runs = []
+                st.session_state.recent_flow_runs.append({
+                    'id': flow_run_id,
+                    'name': display_name,
+                    'deployment': deployment_name,
+                    'triggered_at': datetime.now(),
+                    'parameters': parameters
+                })
+                
+                # Keep only last 10 runs
+                if len(st.session_state.recent_flow_runs) > 10:
+                    st.session_state.recent_flow_runs = st.session_state.recent_flow_runs[-10:]
+            else:
+                st.error(message)
+        except Exception as e:
+            st.error(f"Error triggering {display_name}: {e}")
+
+
 def show_pipeline_overview():
     """Show overview of current sales pipeline"""
     st.subheader("📈 Sales Pipeline Overview")
@@ -709,7 +1018,7 @@ def main():
     st.markdown("---")
     
     # Create tabs for navigation
-    tab2, tab1, tab5, tab4, tab3 = st.tabs(["📊 Pipeline Overview", "🔮 Single Prediction", "🔍 Model Monitoring", "🔧 Simulation Control", "🤖 Model Information"])
+    tab2, tab1, tab6, tab5, tab4, tab3 = st.tabs(["📊 Pipeline Overview", "🔮 Single Prediction", "🚀 Workflow Control", "🔍 Model Monitoring", "🔧 Simulation Control", "🤖 Model Information"])
     
     with tab1:
         st.header("Individual Opportunity Prediction")
@@ -726,6 +1035,9 @@ def main():
         st.write("Overview of all open opportunities with win probability predictions.")
         
         show_pipeline_overview()
+    
+    with tab6:
+        show_prefect_workflow_controls()
     
     with tab5:
         st.header("Model Drift Monitoring")
