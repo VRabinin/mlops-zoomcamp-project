@@ -217,9 +217,9 @@ mlartifacts/
 flows/__pycache__/
 
 # Model artifacts
-models/
-artifacts/
-checkpoints/
+/models/
+/artifacts/
+/checkpoints/
 
 # Data files (large datasets)
 data/raw/
