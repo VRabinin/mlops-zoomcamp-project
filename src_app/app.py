@@ -24,8 +24,14 @@ import os
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-# Note: Removed config import to make app more standalone
-# from src.config.config import get_config
+# Import storage manager and config
+try:
+    from src.config.config import get_config
+    from src.utils.storage import StorageManager
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    st.warning("Config module not available - using fallback configuration")
 
 warnings.filterwarnings('ignore')
 
@@ -40,7 +46,7 @@ MODEL_NAME = 'monthly_win_probability_model'
 os.environ['AWS_ACCESS_KEY_ID'] = MINIO_ACCESS_KEY
 os.environ['AWS_SECRET_ACCESS_KEY'] = MINIO_SECRET_KEY
 os.environ['AWS_DEFAULT_REGION'] = os.getenv('AWS_DEFAULT_REGION', 'us-east-1')
-os.environ['MLFLOW_S3_ENDPOINT_URL'] = MINIO_ENDPOINT
+os.environ['MINIO_ENDPOINT'] = MINIO_ENDPOINT
 
 # Configure page
 st.set_page_config(
@@ -81,21 +87,111 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data
+@st.cache_data()
+def get_current_period():
+    #try:
+    while True:
+        if CONFIG_AVAILABLE:
+            # Use storage manager for intelligent data loading
+            config = get_config()
+            storage_manager = StorageManager(config)
+            
+            # Try to load the latest features file
+            #try:
+            while True:
+                # Look for the most recent CRM features file
+                feature_files = storage_manager.list_files('features', 'crm_features_*.csv')
+                if feature_files:
+                    # Sort by name to get the most recent (assuming date in filename)
+                    latest_file = sorted(feature_files)[-1]
+                    filename = Path(latest_file).name if storage_manager.use_s3 else latest_file
+                    current_period = filename.split('_')[-1].replace('.csv', '')
+                    #st.success(f"✅ Data loaded from {'MinIO' if storage_manager.use_s3 else 'local'}: {filename}")
+                    return current_period
+                else:
+                    st.error("No feature files found in the storage")
+                    current_period = None
+                break
+            #except Exception as storage_error:
+            #    st.error(f"Storage manager failed: {storage_error}")
+
+        else:
+            st.error(f"Config is not available - cannot load data")
+
+@st.cache_data()
 def load_data():
-    """Load the CRM features dataset"""
+    """Load the CRM features dataset from MinIO or local storage"""
     try:
-        data_path = project_root / "data" / "features" / "crm_features.csv"
-        df = pd.read_csv(data_path)
+        config = get_config()
+        storage_manager = StorageManager(config)
+        current_period = get_current_period()
+        df = storage_manager.load_dataframe_by_type('features', f'crm_features_{current_period}.csv')
+        df['engage_date'] = pd.to_datetime(df['engage_date'])
+        df['close_date'] = pd.to_datetime(df['close_date'], errors='coerce')
+    except Exception as e:
+        st.error(f"❌ Error loading data: {e}")
+        st.info("**Troubleshooting steps:**")
+        st.info("1. Ensure MinIO is running: `make application-start`")
+        st.info("2. Check if data files exist in MinIO bucket")
+        st.info("3. Verify data pipeline has run: `make data-pipeline`")
+        return None
+            # Convert date columns
+    return df
+
+
+    #try:
+    while True:
+        if CONFIG_AVAILABLE:
+            # Use storage manager for intelligent data loading
+            config = get_config()
+            storage_manager = StorageManager(config)
+            
+            # Try to load the latest features file
+            #try:
+            while True:
+                # Look for the most recent CRM features file
+                feature_files = storage_manager.list_files('features', 'crm_features_*.csv')
+                if feature_files:
+                    # Sort by name to get the most recent (assuming date in filename)
+                    latest_file = sorted(feature_files)[-1]
+                    filename = Path(latest_file).name if storage_manager.use_s3 else latest_file
+                    current_period = get_current_period()
+                    df = storage_manager.load_dataframe_by_type('features', f'crm_features_{current_period}.csv')
+                    #df = storage_manager.load_dataframe_by_type('features', filename)
+                    #st.success(f"✅ Data loaded from {'MinIO' if storage_manager.use_s3 else 'local'}: {filename}")
+                break
+            #except Exception as storage_error:
+            #    st.warning(f"Storage manager failed: {storage_error}")
+            #    # Fallback to local file
+            #    data_path = project_root / "data" / "features" / "crm_features.csv"
+            #    df = pd.read_csv(data_path)
+            #    st.info("📁 Loaded data from local fallback")
+        else:
+            # Fallback to local file when config not available
+            data_path = project_root / "data" / "features" / "crm_features.csv"
+            df = pd.read_csv(data_path)
+            #st.info("📁 Loaded data from local file (config unavailable)")
         
         # Convert date columns
         df['engage_date'] = pd.to_datetime(df['engage_date'])
         df['close_date'] = pd.to_datetime(df['close_date'], errors='coerce')
-        
+
         return df
-    except Exception as e:
-        st.error(f"Error loading data: {e}")
-        return None
+
+#    except Exception as e:
+#        st.error(f"❌ Error loading data: {e}")
+#        st.info("**Troubleshooting steps:**")
+#        st.info("1. Ensure MinIO is running: `make application-start`")
+#        st.info("2. Check if data files exist in MinIO bucket")
+#        st.info("3. Verify data pipeline has run: `make data-pipeline`")
+#        return None
+
+@st.cache_data
+def load_periods():
+    """Load unique periods from the data"""
+    df = load_data()
+    periods = df['creation_year_month'].unique().astype(str).tolist()
+    return periods
 
 def check_system_status():
     """Check the status of required services"""
@@ -116,9 +212,43 @@ def check_system_status():
     except:
         status['MinIO'] = "❌ Not accessible"
     
-    # Check data file
-    data_path = project_root / "data" / "features" / "crm_features.csv"
-    status['Data File'] = "✅ Available" if data_path.exists() else "❌ Missing"
+    # Check data availability using storage manager
+    if CONFIG_AVAILABLE:
+        try:
+            config = get_config()
+            storage_manager = StorageManager(config)
+
+            try:
+                # Look for the most recent CRM features file
+                feature_files = storage_manager.list_files('features', 'crm_features*.csv')
+                
+                if feature_files:
+                    # Sort by name to get the most recent (assuming date in filename)
+                    latest_file = sorted(feature_files)[-1]
+                    filename = Path(latest_file).name if storage_manager.use_s3 else latest_file
+                    status['Data (Features)'] = f"✅ Available in the file: {filename}"
+                else:
+                    status['Data (Features)'] = "❌ Missing"
+                
+            except Exception as storage_error:
+                st.warning(f"Storage manager failed: {storage_error}")
+                status['Data (Features)'] = "❌ Missing"
+
+            # Count available feature files
+            try:
+                feature_files = storage_manager.list_files('features', 'crm_features*.csv')
+                file_count = len(feature_files)
+                status['Feature Files'] = f"✅ {file_count} files" if file_count > 0 else "❌ No files"
+            except:
+                status['Feature Files'] = "❌ Cannot list"
+                
+        except Exception as e:
+            status['Data (Features)'] = f"❌ Error: {str(e)[:30]}..."
+            status['Feature Files'] = "❌ Storage error"
+    else:
+        # Fallback to local file check
+        data_path = project_root / "data" / "features" / "crm_features.csv"
+        status['Data File'] = "✅ Available" if data_path.exists() else "❌ Missing"
     
     # Check model
     try:
@@ -265,7 +395,7 @@ def create_prediction_data(opportunity_id, close_value, engage_date, sales_agent
     """Create a prediction-ready dataset from form inputs"""
     
     # Load historical data for context
-    df = load_data()
+    df= load_data()
     if df is None:
         return None
     
@@ -578,16 +708,11 @@ def main():
     st.title("🎯 CRM Monthly Win Probability Predictor")
     st.markdown("---")
     
-    # Sidebar
-    st.sidebar.title("Navigation")
-    page = st.sidebar.selectbox("Choose a page:", [
-        "Single Prediction", 
-        "Pipeline Overview", 
-        "Model Information"
-    ])
+    # Create tabs for navigation
+    tab2, tab1, tab4, tab3 = st.tabs(["📊 Pipeline Overview", "🔮 Single Prediction", "🔧 Simulation Control", "🤖 Model Information"])
     
-    if page == "Single Prediction":
-        st.header("🔮 Individual Opportunity Prediction")
+    with tab1:
+        st.header("Individual Opportunity Prediction")
         st.write("Enter opportunity details to predict win probability for the next month.")
         
         prediction_data = create_single_prediction_input()
@@ -596,14 +721,35 @@ def main():
             model = load_model()
             display_prediction_results(prediction_data, model)
     
-    elif page == "Pipeline Overview":
-        st.header("📊 Sales Pipeline Analysis")
+    with tab2:
+        st.header("Sales Pipeline Analysis")
         st.write("Overview of all open opportunities with win probability predictions.")
         
         show_pipeline_overview()
     
-    elif page == "Model Information":
-        st.header("🤖 Model Information")
+    with tab4:
+        st.header("Simulation Control")
+        st.write("Control the simulation environment for testing and development purposes.")
+        
+        st.subheader("🔄 Reset Simulation")
+        if st.button("Reset to First Period"):
+            # Placeholder for reset logic
+            st.success("Simulation reset successfully!")
+        df = load_data()
+        # Get unique periods from the data
+        periods = df['creation_year_month'].unique().astype(str).tolist()
+        #Add input field to store the start period
+        st.selectbox("Select Start Period", options=periods, index=0, key="start_period")
+        if st.button("Re-run Data Acquisition"):
+            # Placeholder for re-running data acquisition
+            st.success("Data acquisition re-run successfully!")
+        st.subheader("📊 Move to the next period")
+        if st.button("Load Simulation Data"):
+            # Placeholder for loading simulation data
+            st.info("Simulation data loaded successfully!")
+
+    with tab3:
+        st.header("Model Information")
         
         # System Status Check
         st.subheader("🔧 System Status")
@@ -612,11 +758,31 @@ def main():
             
         col1, col2 = st.columns(2)
         with col1:
-            for service, status_text in list(status.items())[:2]:
+            for service, status_text in list(status.items())[:len(status)//2 + 1]:
                 st.write(f"**{service}**: {status_text}")
         with col2:
-            for service, status_text in list(status.items())[2:]:
+            for service, status_text in list(status.items())[len(status)//2 + 1:]:
                 st.write(f"**{service}**: {status_text}")
+        
+        # Storage Information
+        st.subheader("💾 Storage Configuration")
+        if CONFIG_AVAILABLE:
+            try:
+                config = get_config()
+                storage_manager = StorageManager(config)
+                storage_info = storage_manager.get_storage_info()
+                
+                st.write(f"**Storage Type**: {storage_info['storage_type']}")
+                if storage_info['use_s3']:
+                    st.write(f"**Data Bucket**: {storage_info.get('bucket', 'N/A')}")
+                    st.write(f"**MinIO Endpoint**: {storage_info.get('endpoint', 'N/A')}")
+                else:
+                    st.write("**Local Path**: data/features/")
+                
+            except Exception as e:
+                st.error(f"Error getting storage info: {e}")
+        else:
+            st.info("Storage manager not available - using local files")
         
         # Connection URLs
         st.write("**Service URLs:**")

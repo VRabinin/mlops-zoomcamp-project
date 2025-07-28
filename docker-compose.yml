@@ -185,15 +185,21 @@ services:
       - "${STREAMLIT_PORT:-8501}:8501"
     environment:
       - MLFLOW_TRACKING_URI=http://mlops-mlflow:5000
-      - MLFLOW_S3_ENDPOINT_URL=http://mlops-minio:9000
+      - MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL:-http://mlops-minio:9000}
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - AWS_DEFAULT_REGION=us-east-1
+      - DATA_LAKE_BUCKET=${DATA_LAKE_BUCKET:-data-lake}
+      - S3_RAW_DATA_PATH=${S3_RAW_DATA_PATH:-data/raw}
+      - S3_PROCESSED_DATA_PATH=${S3_PROCESSED_DATA_PATH:-data/processed}
+      - S3_FEATURES_DATA_PATH=${S3_FEATURES_DATA_PATH:-data/features}
     depends_on:
       - mlflow
       - minio
     volumes:
-      - ./data:/app/data:ro  # Mount data directory as read-only
+#      - ./data:/app/data:ro  # Mount data directory as read-only
+      - ./src:/app/src  # Mount source code for live updates
+      - ./src_app:/app/src_app  # Mount source code for live updates
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8501/_stcore/health"]
