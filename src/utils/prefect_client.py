@@ -368,6 +368,7 @@ class CRMDeployments:
     MONTHLY_TRAINING = "monthly-win-probability-training"
     REFERENCE_DATA = "reference-data-creation"
     DRIFT_MONITORING = "model-drift-monitoring"
+    DATA_CLEANUP = "crm-data-cleanup"
 
 
 def get_prefect_manager() -> PrefectFlowManager:

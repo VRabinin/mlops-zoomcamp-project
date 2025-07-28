@@ -91,16 +91,16 @@ st.markdown("""
 
 @st.cache_data()
 def get_current_period():
-    #try:
-    while True:
+    try:
+    #while True:
         if CONFIG_AVAILABLE:
             # Use storage manager for intelligent data loading
             config = get_config()
             storage_manager = StorageManager(config)
             
             # Try to load the latest features file
-            #try:
-            while True:
+            try:
+            #while True:
                 # Look for the most recent CRM features file
                 feature_files = storage_manager.list_files('features', 'crm_features_*.csv')
                 if feature_files:
@@ -113,12 +113,29 @@ def get_current_period():
                 else:
                     st.error("No feature files found in the storage")
                     current_period = None
-                break
-            #except Exception as storage_error:
-            #    st.error(f"Storage manager failed: {storage_error}")
-
+                #break
+            except Exception as storage_error:
+                st.error(f"Storage manager failed to load current period: {storage_error}")
         else:
             st.error(f"Config is not available - cannot load data")
+    except Exception as storage_error:
+        st.error(f"Storage manager failed to load current period: {storage_error}")            
+
+@st.cache_data
+def load_periods():
+    """Load unique periods from the data"""
+    try:
+    #while True:
+        if CONFIG_AVAILABLE:
+            # Use storage manager for intelligent data loading
+            config = get_config()
+            storage_manager = StorageManager(config)
+            df = storage_manager.load_dataframe('raw', 'sales_pipeline.csv')
+            df['creation_year_month'] = pd.to_datetime(df['engage_date']).dt.to_period('M')
+            periods = df[df['creation_year_month'].notnull()]['creation_year_month'].unique().astype(str).tolist()
+    except Exception as storage_error:
+        st.error(f"Storage manager failed to load periods: {storage_error}")                        
+    return periods
 
 @st.cache_data()
 def load_data():
@@ -188,12 +205,6 @@ def load_data():
 #        st.info("3. Verify data pipeline has run: `make data-pipeline`")
 #        return None
 
-@st.cache_data
-def load_periods():
-    """Load unique periods from the data"""
-    df = load_data()
-    periods = df['creation_year_month'].unique().astype(str).tolist()
-    return periods
 
 def check_system_status():
     """Check the status of required services"""
@@ -604,33 +615,29 @@ def display_prediction_results(prediction_data, model):
     except Exception as e:
         st.error(f"Error making prediction: {e}")
 
-def show_prefect_workflow_controls():
-    """Show Prefect workflow controls for running MLOps pipelines."""
-    st.header("Workflow Management")
-    st.write("Control MLOps pipelines through Prefect server deployments.")
-    
+def show_simulation_controls():
+    st.header("🔧 Simulation Control")
+    st.write("Control the simulation environment for testing and development purposes.")
     if not CONFIG_AVAILABLE:
         st.error("❌ Configuration not available - cannot connect to Prefect server")
-        return
-    
+        return        
     # Initialize Prefect manager
     try:
         prefect_manager = PrefectFlowManager()
     except Exception as e:
         st.error(f"❌ Error initializing Prefect client: {e}")
         return
-    
     # Check Prefect server health
-    is_healthy, health_msg = prefect_manager.check_server_health()
+    is_healthy, health_msg = prefect_manager.check_server_health()    
     st.write("**Prefect Server Status:**", health_msg)
-    
     if not is_healthy:
         st.info("💡 **Troubleshooting:** Ensure Prefect server is running with `make application-start`")
-        return
-    
+        return    
+
     # Get deployments
     try:
         deployments = prefect_manager.get_deployments_sync()
+        deployment_names = [d['name'] for d in deployments]
         if not deployments:
             st.warning("⚠️ No Prefect deployments found")
             st.info("💡 **Setup required:** Deploy flows first with `make prefect-deploy`")
@@ -638,23 +645,39 @@ def show_prefect_workflow_controls():
     except Exception as e:
         st.error(f"❌ Error fetching deployments: {e}")
         return
-    
+
+    col1, col2 = st.columns([0.3, 0.7])
     # Create workflow control sections
-    tab1, tab2, tab3 = st.tabs(["🚀 Run Pipelines", "📊 Flow Status", "⚙️ Deployments"])
+    with col1:
+        tab1, tab2, tab3, tab4 = st.tabs(["🚀 Simulation Control", "📊 Flow Status", "⚙️ Deployments", "⚠️ Advanced Controls"])
     
-    with tab1:
-        show_pipeline_controls(prefect_manager, deployments)
-    
-    with tab2:
-        show_flow_status(prefect_manager)
-    
-    with tab3:
-        show_deployment_info(prefect_manager, deployments)
-
-
-def show_pipeline_controls(prefect_manager: 'PrefectFlowManager', deployments: List[Dict[str, Any]]):
+        with tab1:
+            st.subheader("🔄 Reset Simulation")
+            period = st.selectbox("Select Start Period", options=load_periods(), index=0, key="start_period")                
+            if st.button("Reset to Start Period"):
+                if CRMDeployments.DATA_CLEANUP in deployment_names:
+                    parameters = {
+                        "dry_run": True,
+                        "file_categories": ["all"]
+                    }
+                    trigger_flow(prefect_manager, CRMDeployments.DATA_CLEANUP, f"Data Cleanup (Execute)", parameters)
+                else:
+                    st.warning("❌ Cleanup Pipeline is not deployed")
+            st.subheader("📊 Move to the next period")
+            if st.button("Load Simulation Data"):
+                # Placeholder for loading simulation data
+                st.info("Simulation data loaded successfully!")    
+        with tab2:
+            show_flow_status(prefect_manager)
+        with tab3:
+            show_deployment_info(prefect_manager, deployments)
+        with tab4:
+            show_advanced_pipeline_controls(prefect_manager, deployments)    
+    with col2:
+        pass
+def show_advanced_pipeline_controls(prefect_manager: 'PrefectFlowManager', deployments: List[Dict[str, Any]]):
     """Show controls for running different MLOps pipelines."""
-    st.subheader("🚀 Pipeline Execution")
+    st.subheader("⚠️ Pipeline Execution")
     
     deployment_names = [d['name'] for d in deployments]
     
@@ -664,22 +687,7 @@ def show_pipeline_controls(prefect_manager: 'PrefectFlowManager', deployments: L
     with col1:
         st.write("Download and acquire raw CRM sales data from Kaggle.")
         # Parameters for data acquisition
-        if CONFIG_AVAILABLE:
-            try:
-                config = get_config()
-                storage_manager = StorageManager(config)
-                feature_files = storage_manager.list_files("features", "crm_features_*.csv")
-                periods = [f.split('_')[-1].replace('.csv', '') for f in feature_files]
-                periods = sorted(list(set(periods)))
-                # Add common periods if none found
-                if not periods:
-                    periods = ["2017-05", "2017-06", "2017-07"]
-            except:
-                periods = ["2017-05", "2017-06", "2017-07"]
-        else:
-            periods = ["2017-05", "2017-06", "2017-07"]
-        
-        snapshot_month = st.selectbox("Snapshot Month", periods, key="acquisition_snapshot_month")
+        snapshot_month = st.selectbox("Snapshot Month", load_periods(), key="acquisition_snapshot_month")
     
     with col2:
         st.write("")  # Spacer
@@ -695,6 +703,18 @@ def show_pipeline_controls(prefect_manager: 'PrefectFlowManager', deployments: L
     st.write("### 🔄 Data Ingestion")
     col1, col2 = st.columns([2, 2])
     with col1:
+        if CONFIG_AVAILABLE:
+            try:
+                config = get_config()
+                storage_manager = StorageManager(config)
+                feature_files = storage_manager.list_files("raw", "sales_pipeline_*.csv")
+                periods = [f.split('_')[-1].replace('.csv', '') for f in feature_files]
+                periods = sorted(list(set(periods)))
+                # Add common periods if none found
+                if not periods:
+                    st.warning("❌ Not raw data available - cannot run ingestion")
+            except:
+                st.warning("❌ Getting periods from raw data failed - cannot run ingestion")
         st.write("Process and validate acquired data, create features.")
         ingestion_month = st.selectbox("Processing Month", periods, key="ingestion_snapshot_month")
     with col2:
@@ -737,10 +757,10 @@ def show_pipeline_controls(prefect_manager: 'PrefectFlowManager', deployments: L
                 feature_files = storage_manager.list_files("features", "crm_features_*.csv")
                 periods = [f.split('_')[-1].replace('.csv', '') for f in feature_files]
                 periods = sorted(list(set(periods)))
+                if not periods:
+                    st.warning("❌ Not raw data available - cannot run ingestion")
             except:
-                periods = ["2017-05", "2017-06", "2017-07"]
-        else:
-            periods = ["2017-05", "2017-06", "2017-07"]
+                st.warning("❌ Getting periods from raw data failed - cannot run ingestion")
         
         ref_period = st.selectbox("Reference Period", periods, key="ref_period_workflow")
         sample_size = st.number_input("Sample Size", min_value=100, max_value=5000, value=1000, key="ref_sample_workflow")
@@ -776,6 +796,51 @@ def show_pipeline_controls(prefect_manager: 'PrefectFlowManager', deployments: L
                     "reference_period": ref_period_monitor
                 }
                 trigger_flow(prefect_manager, CRMDeployments.DRIFT_MONITORING, "Drift Monitoring", parameters)
+        else:
+            st.warning("❌ Not deployed")
+
+    # Data Cleanup
+    st.write("### 🧹 Data Cleanup")
+    col1, col2 = st.columns([2, 2])
+    with col1:
+        st.write("Clean up processed CSV files (preserves Kaggle source data).")
+        dry_run_cleanup = st.checkbox("Dry Run (preview only)", value=True, key="dry_run_cleanup")
+        
+        # File category selection
+        st.write("**Select cleanup categories:**")
+        cleanup_all = st.checkbox("All processed files", key="cleanup_all")
+        cleanup_features = st.checkbox("Feature files", key="cleanup_features", disabled=cleanup_all)
+        cleanup_processed = st.checkbox("Processed files", key="cleanup_processed", disabled=cleanup_all) 
+        cleanup_temp = st.checkbox("Temporary files", key="cleanup_temp", disabled=cleanup_all)
+        
+        # Build file categories list
+        file_categories = []
+        if cleanup_all:
+            file_categories = ["all"]
+        else:
+            if cleanup_features:
+                file_categories.append("features")
+            if cleanup_processed:
+                file_categories.append("processed")
+            if cleanup_temp:
+                file_categories.append("temp")
+    
+    with col2:
+        st.write("")  # Spacer
+        st.write("")  # Spacer
+        if CRMDeployments.DATA_CLEANUP in deployment_names:
+            # Only enable button if at least one category is selected
+            button_disabled = len(file_categories) == 0
+            if button_disabled:
+                st.warning("⚠️ Select at least one cleanup category")
+            
+            if st.button("🧹 Run Data Cleanup", key="run_cleanup", disabled=button_disabled):
+                parameters = {
+                    "dry_run": dry_run_cleanup,
+                    "file_categories": file_categories
+                }
+                action_text = "Preview" if dry_run_cleanup else "Execute"
+                trigger_flow(prefect_manager, CRMDeployments.DATA_CLEANUP, f"Data Cleanup ({action_text})", parameters)
         else:
             st.warning("❌ Not deployed")
 
@@ -1018,7 +1083,7 @@ def main():
     st.markdown("---")
     
     # Create tabs for navigation
-    tab2, tab1, tab6, tab5, tab4, tab3 = st.tabs(["📊 Pipeline Overview", "🔮 Single Prediction", "🚀 Workflow Control", "🔍 Model Monitoring", "🔧 Simulation Control", "🤖 Model Information"])
+    tab2, tab1, tab5, tab4, tab3 = st.tabs(["📊 Pipeline Overview", "🔮 Single Prediction", "🔍 Model Monitoring", "🔧 Simulation Control", "🤖 Model Information"])
     
     with tab1:
         st.header("Individual Opportunity Prediction")
@@ -1036,9 +1101,6 @@ def main():
         
         show_pipeline_overview()
     
-    with tab6:
-        show_prefect_workflow_controls()
-    
     with tab5:
         st.header("Model Drift Monitoring")
         st.write("Monitor model performance and detect data drift using Evidently AI.")
@@ -1051,27 +1113,9 @@ def main():
         #    st.info("Install monitoring dependencies: pip install evidently")
         #except Exception as e:
         #    st.error(f"Error loading monitoring dashboard: {e}")
-    
+
     with tab4:
-        st.header("Simulation Control")
-        st.write("Control the simulation environment for testing and development purposes.")
-        
-        st.subheader("🔄 Reset Simulation")
-        if st.button("Reset to First Period"):
-            # Placeholder for reset logic
-            st.success("Simulation reset successfully!")
-        df = load_data()
-        # Get unique periods from the data
-        periods = df['creation_year_month'].unique().astype(str).tolist()
-        #Add input field to store the start period
-        st.selectbox("Select Start Period", options=periods, index=0, key="start_period")
-        if st.button("Re-run Data Acquisition"):
-            # Placeholder for re-running data acquisition
-            st.success("Data acquisition re-run successfully!")
-        st.subheader("📊 Move to the next period")
-        if st.button("Load Simulation Data"):
-            # Placeholder for loading simulation data
-            st.info("Simulation data loaded successfully!")
+        show_simulation_controls()
 
     with tab3:
         st.header("Model Information")

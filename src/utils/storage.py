@@ -231,7 +231,32 @@ class StorageManager:
             True if file exists, False otherwise.
         """
         if self.use_s3:
-            return self._exists_s3(path)
+            # For the exists method, we need to determine the bucket and key from the path
+            # This is a generic method, so we'll need to parse the path
+            if '/' in path:
+                # Assume path format is bucket/key or data_type/filename
+                parts = path.split('/', 1)
+                if len(parts) == 2:
+                    # Try to determine if first part is a bucket or data type
+                    first_part = parts[0]
+                    if first_part in ['raw', 'processed', 'features', 'monitoring']:
+                        # It's a data type, convert to bucket/key
+                        bucket = self.get_bucket_for_data_type(first_part) 
+                        s3_key = self.get_s3_path(first_part, parts[1])
+                    else:
+                        # Assume it's bucket/key format
+                        bucket = first_part
+                        s3_key = parts[1]
+                else:
+                    # Single path, use default bucket
+                    bucket = self.config.storage.buckets.get('data_lake', 'data-lake')
+                    s3_key = path
+            else:
+                # Single filename, use default bucket
+                bucket = self.config.storage.buckets.get('data_lake', 'data-lake') 
+                s3_key = path
+            
+            return self._exists_s3(bucket, s3_key)
         else:
             return self._exists_local(path)
     
@@ -246,10 +271,11 @@ class StorageManager:
         """
         return Path(path).exists()
     
-    def _exists_s3(self, path: str) -> bool:
+    def _exists_s3(self, bucket: str, path: str) -> bool:
         """Check if S3 object exists.
         
         Args:
+            bucket: S3 bucket name.
             path: S3 key path.
             
         Returns:
@@ -540,8 +566,9 @@ class StorageManager:
             True if file exists, False otherwise
         """
         if self.use_s3:
+            bucket = self.get_bucket_for_data_type(data_type)
             s3_path = self.get_s3_path(data_type, filename)
-            return self._exists_s3(s3_path)
+            return self._exists_s3(bucket, s3_path)
         else:
             local_path = self.resolve_path(data_type, filename)
             return self._exists_local(str(local_path))
@@ -736,6 +763,80 @@ class StorageManager:
         except Exception as e:
             self.logger.error(f"Failed to upload file to S3 {bucket}/{key}: {e}")
             raise
+    
+    def delete_file(self, data_type: str, filename: str) -> bool:
+        """Delete a file from storage.
+        
+        Args:
+            data_type: Type of data (raw, processed, features, etc.).
+            filename: Name of the file to delete.
+            
+        Returns:
+            True if deletion was successful, False otherwise.
+        """
+        try:
+            if self.use_s3:
+                bucket = self.get_bucket_for_data_type(data_type)
+                key = self.get_s3_path(data_type, filename)
+                return self._delete_file_s3(bucket, key)
+            else:
+                path = self.resolve_path(data_type, filename)
+                return self._delete_file_local(str(path))
+        except Exception as e:
+            self.logger.error(f"Failed to delete file {data_type}/{filename}: {e}")
+            return False
+    
+    def _delete_file_local(self, path: str) -> bool:
+        """Delete file from local filesystem.
+        
+        Args:
+            path: Full path to the file.
+            
+        Returns:
+            True if deletion was successful, False otherwise.
+        """
+        try:
+            file_path = Path(path)
+            if file_path.exists():
+                file_path.unlink()
+                self.logger.info(f"Deleted local file: {path}")
+                return True
+            else:
+                self.logger.warning(f"Local file does not exist: {path}")
+                return False
+        except Exception as e:
+            self.logger.error(f"Failed to delete local file {path}: {e}")
+            return False
+    
+    def _delete_file_s3(self, bucket: str, key: str) -> bool:
+        """Delete file from S3.
+        
+        Args:
+            bucket: S3 bucket name.
+            key: S3 object key.
+            
+        Returns:
+            True if deletion was successful, False otherwise.
+        """
+        try:
+            # Check if object exists first
+            try:
+                self.s3_client.head_object(Bucket=bucket, Key=key)
+            except ClientError as e:
+                if e.response['Error']['Code'] == '404':
+                    self.logger.warning(f"S3 object does not exist: {bucket}/{key}")
+                    return False
+                else:
+                    raise
+            
+            # Delete the object
+            self.s3_client.delete_object(Bucket=bucket, Key=key)
+            self.logger.info(f"Deleted S3 object: {bucket}/{key}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to delete S3 object {bucket}/{key}: {e}")
+            return False
 
 def create_storage_manager(config: Config) -> StorageManager:
     """Factory function to create storage manager.

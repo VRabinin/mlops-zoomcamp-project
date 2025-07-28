@@ -64,6 +64,20 @@ deployments:
   - minio
   work_pool:
     name: default-agent-pool
+- description: CRM data cleanup pipeline - removes processed files while preserving
+    Kaggle source data
+  entrypoint: src/pipelines/run_data_cleanup.py:crm_data_cleanup_flow
+  name: crm-data-cleanup
+  parameters: {}
+  tags:
+  - cleanup
+  - maintenance
+  - crm
+  - data
+  - s3
+  - minio
+  work_pool:
+    name: default-agent-pool
 name: crm-mlops-project
 prefect-version: 3.4.10
 pull:

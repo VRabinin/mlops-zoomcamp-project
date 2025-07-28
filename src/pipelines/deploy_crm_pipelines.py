@@ -128,6 +128,19 @@ def deploy_with_s3_storage():
                         #'schedule': {
                         #    'interval': 3600  # Every hour
                         #}
+                    },
+                    {
+                        'name': 'crm-data-cleanup',
+                        'entrypoint': 'src/pipelines/run_data_cleanup.py:crm_data_cleanup_flow',
+                        'description': 'CRM data cleanup pipeline - removes processed files while preserving Kaggle source data',
+                        'tags': ['cleanup', 'maintenance', 'crm', 'data', 's3', 'minio'],
+                        'parameters': {},
+                        'work_pool': {
+                            'name': config.prefect.work_pool
+                        },
+                        #'schedule': {
+                        #    'cron': '0 2 * * 0'  # Weekly on Sunday at 2 AM
+                        #}
                     }                                
                 ]
             }
