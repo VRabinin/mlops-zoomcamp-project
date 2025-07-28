@@ -152,18 +152,25 @@ services:
     container_name: mlops-prefect-setup
     depends_on:
       - prefect-server
+      - mlflow
+      - minio
     environment:
       - PREFECT_API_URL=http://mlops-prefect-server:${PREFECT_PORT:-4200}/api
       - PYTHONPATH=/app
       - KAGGLE_USERNAME=${KAGGLE_USERNAME}
       - KAGGLE_KEY=${KAGGLE_KEY}
+      - MLFLOW_TRACKING_URI=http://mlops-mlflow:5000
+      - MLFLOW_S3_ENDPOINT_URL=http://mlops-minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - AWS_DEFAULT_REGION=us-east-1
     volumes:
       - .:/app  # Mount the entire project directory
     working_dir: /app
     entrypoint: >
       /bin/sh -c "
       echo 'Installing worker dependencies...';
-      pip install prefect-aws boto3 kaggle pandas scikit-learn pyyaml requests;
+      pip install prefect-aws boto3 kaggle pandas scikit-learn pyyaml requests mlflow xgboost;
       echo 'Waiting for Prefect server to be ready...';
       sleep 15;
       echo 'Creating default work pool...';
