@@ -170,7 +170,7 @@ services:
     entrypoint: >
       /bin/sh -c "
       echo 'Installing worker dependencies...';
-      pip install prefect-aws boto3 kaggle pandas scikit-learn pyyaml requests mlflow xgboost;
+      pip install prefect-aws boto3 kaggle pandas scikit-learn pyyaml requests mlflow xgboost evidently==0.6.7;
       echo 'Waiting for Prefect server to be ready...';
       sleep 15;
       echo 'Creating default work pool...';

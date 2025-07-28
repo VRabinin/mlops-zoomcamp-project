@@ -14,6 +14,8 @@ class DataPathConfig:
     raw: str = "data/raw"
     processed: str = "data/processed"
     features: str = "data/features"
+    monitoring_results: str = "data/monitoring/results"
+    monitoring_reports: str = "data/monitoring/reports"
 
 
 @dataclass
@@ -57,7 +59,9 @@ class StorageConfig:
         "features": "features",
         "models": "models",
         "experiments": "experiments",
-        "prefect_flows": "prefect-flows"
+        "prefect_flows": "prefect-flows",
+        "monitoring_results": "data/monitoring/results",
+        "monitoring_reports": "data/monitoring/reports"
     })
     # Legacy data_paths for backward compatibility
     data_paths: Dict[str, str] = field(default_factory=lambda: {
@@ -66,7 +70,9 @@ class StorageConfig:
         "features": "features",
         "models": "models",
         "experiments": "experiments",
-        "prefect_flows": "prefect-flows"
+        "prefect_flows": "prefect-flows",
+        "monitoring_results": "monitoring/results",
+        "monitoring_reports": "monitoring/reports"
     })
 
 

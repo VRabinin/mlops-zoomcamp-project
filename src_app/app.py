@@ -709,7 +709,7 @@ def main():
     st.markdown("---")
     
     # Create tabs for navigation
-    tab2, tab1, tab4, tab3 = st.tabs(["📊 Pipeline Overview", "🔮 Single Prediction", "🔧 Simulation Control", "🤖 Model Information"])
+    tab2, tab1, tab5, tab4, tab3 = st.tabs(["📊 Pipeline Overview", "🔮 Single Prediction", "🔍 Model Monitoring", "🔧 Simulation Control", "🤖 Model Information"])
     
     with tab1:
         st.header("Individual Opportunity Prediction")
@@ -726,6 +726,19 @@ def main():
         st.write("Overview of all open opportunities with win probability predictions.")
         
         show_pipeline_overview()
+    
+    with tab5:
+        st.header("Model Drift Monitoring")
+        st.write("Monitor model performance and detect data drift using Evidently AI.")
+        
+        #try:
+        from src.monitoring.streamlit_dashboard import show_monitoring_dashboard
+        show_monitoring_dashboard()
+        #except ImportError:
+        #    st.error("Monitoring dashboard not available - missing dependencies")
+        #    st.info("Install monitoring dependencies: pip install evidently")
+        #except Exception as e:
+        #    st.error(f"Error loading monitoring dashboard: {e}")
     
     with tab4:
         st.header("Simulation Control")

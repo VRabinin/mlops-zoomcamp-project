@@ -102,7 +102,33 @@ def deploy_with_s3_storage():
                         #'schedule': {
                         #    'interval': 3600  # Every hour
                         #}
-                    }                    
+                    },
+                    {
+                        'name': 'reference-data-creation',
+                        'entrypoint': 'src/pipelines/run_reference_data_creation.py:create_reference_data_flow',
+                        'description': 'Reference data creation pipeline (MinIO S3 storage)',
+                        'tags': ['data', 'training', 'crm', 'ml', 's3', 'minio'],
+                        'parameters': {},
+                        'work_pool': {
+                            'name': config.prefect.work_pool
+                        },
+                        #'schedule': {
+                        #    'interval': 3600  # Every hour
+                        #}
+                    },
+                    {
+                        'name': 'model-drift-monitoring',
+                        'entrypoint': 'src/pipelines/run_drift_monitoring.py:drift_monitoring_flow',
+                        'description': 'Model drift monitoring pipeline (MinIO S3 storage)',
+                        'tags': ['monitoring', 'drift', 'crm', 'mlops', 's3', 'minio'],
+                        'parameters': {},
+                        'work_pool': {
+                            'name': config.prefect.work_pool
+                        },
+                        #'schedule': {
+                        #    'interval': 3600  # Every hour
+                        #}
+                    }                                
                 ]
             }
             

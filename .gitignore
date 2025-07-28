@@ -225,6 +225,7 @@ flows/__pycache__/
 data/raw/
 data/processed/
 data/features/
+data/monitoring/
 *.parquet
 *.h5
 *.hdf5

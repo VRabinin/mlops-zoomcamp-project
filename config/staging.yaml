@@ -43,3 +43,5 @@ storage:
     models: "staging/models"
     experiments: "staging/experiments"
     prefect_flows: "staging/flows"
+    monitoring_results: "data/monitoring/results"
+    monitoring_reports: "data/monitoring/reports"

@@ -148,33 +148,7 @@ mlflow-server: ## Start MLFlow tracking server
 	mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns --host 0.0.0.0 --port 5000
 
 
-
-
 # Prefect
-prefect-deploy-crm: ## Deploy CRM ingestion flow with S3 storage
-	@echo "Deploying CRM ingestion flow with S3 storage..."
-	@export PREFECT_API_URL=http://localhost:4200/api && \
-	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python src/pipelines/deploy_crm_pipeline.py
-
-prefect-deploy-monthly-training: ## Deploy monthly win probability training flow
-	@echo "Deploying monthly win probability training flow..."
-	@export PREFECT_API_URL=http://localhost:4200/api && \
-	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/deploy_monthly_win_training.py
-
-prefect-run-monthly-training: ## Run monthly win probability training flow
-	@echo "Running monthly win probability training flow..."
-	@export PREFECT_API_URL=http://localhost:4200/api && \
-	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_monthly_win_training.py
-
-#prefect-deploy-s3: ## Deploy CRM flow with S3 storage (MinIO)
-#	@echo "Deploying CRM flow with S3 storage (MinIO)..."
-#	@echo "Ensuring MinIO S3 bucket exists..."
-#	@docker exec mlops-minio-setup mc mb minio/${DATA_LAKE_BUCKET:-data-lake} --ignore-existing 2>/dev/null || true
-#	@export PREFECT_API_URL=http://localhost:4200/api && \
-#	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python -c "\
-#from src.pipelines.deploy_crm_pipeline import deploy_with_s3_storage; \
-#deploy_with_s3_storage()"
-
 prefect-run-acquisition: ## Run CRM ingestion flow directly (for testing)
 	@echo "Running CRM ingestion flow locally..."
 	@echo "Setting Prefect API URL..."
@@ -186,6 +160,21 @@ prefect-run-ingestion: ## Run CRM ingestion flow directly (for testing)
 	@echo "Setting Prefect API URL..."
 	@export PREFECT_API_URL=http://localhost:4200/api && \
 	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_crm_ingestion.py
+prefect-run-monthly-training: ## Run monthly win probability training flow
+	@echo "Running monthly win probability training flow..."
+	@export PREFECT_API_URL=http://localhost:4200/api && \
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) python src/pipelines/run_monthly_win_training.py
+
+prefect-run-reference-creation: ## Run reference data creation flow
+	@echo "Running reference data creation flow..."
+	@export PREFECT_API_URL=http://localhost:4200/api && \
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python src/pipelines/run_reference_data_creation.py
+
+prefect-run-drift-monitoring: ## Run drift monitoring flow (requires current_month parameter)
+	@echo "Running drift monitoring flow..."
+	@read -p "Enter current month (e.g., 2017-06): " current_month; \
+	export PREFECT_API_URL=http://localhost:4200/api && \
+	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python src/pipelines/run_drift_monitoring.py $$current_month
 
 prefect-deploy: ## Deploy CRM ingestion flow with S3 storage
 	@echo "Deploying CRM ingestion flow with S3 storage..."
@@ -218,6 +207,8 @@ prefect-help: ## Show all Prefect commands
 	@echo "prefect-deploy-monthly-training: Deploy monthly win probability training flow"
 	@echo "prefect-run-ingestion:           Run CRM ingestion flow directly"
 	@echo "prefect-run-monthly-training:    Run monthly win probability training flow"
+	@echo "prefect-run-reference-creation:  Create reference data for monitoring"
+	@echo "prefect-run-drift-monitoring:    Run drift monitoring analysis"
 	@echo "prefect-deployments:             List all deployments"
 	@echo "prefect-flows:                   List recent flow runs"
 	@echo "prefect-ui:                      Open Prefect UI in browser"

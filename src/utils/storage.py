@@ -384,7 +384,9 @@ class StorageManager:
             'features': self.config.storage.buckets['data_lake'],
             'experiments': self.config.storage.buckets['mlflow_artifacts'],
             'models': self.config.storage.buckets['model_artifacts'],
-            'prefect_flows': self.config.storage.buckets['data_lake']
+            'prefect_flows': self.config.storage.buckets['data_lake'],
+            'monitoring_results': self.config.storage.buckets['data_lake'],
+            'monitoring_reports': self.config.storage.buckets['data_lake']
         }
         
         return data_type_to_bucket.get(data_type)
@@ -641,6 +643,99 @@ class StorageManager:
                     
         except Exception as e:
             self.logger.error(f"Failed to cleanup S3 files: {str(e)}")
+    
+    def load_text_file(self, data_type: str, filename: str) -> str:
+        """Load text content from a file.
+        
+        Args:
+            data_type: Type of data (features, models, etc.)
+            filename: Name of the file to load
+            
+        Returns:
+            Text content of the file
+        """
+        if self.use_s3:
+            bucket = self.get_bucket_for_data_type(data_type)
+            s3_path = self.get_s3_path(data_type, filename)
+            return self._load_text_file_s3(bucket, s3_path)
+        else:
+            local_path = self.resolve_path(data_type, filename)
+            return self._load_text_file_local(str(local_path))
+    
+    def _load_text_file_local(self, path: str) -> str:
+        """Load text file from local filesystem."""
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            self.logger.error(f"Failed to load text file {path}: {e}")
+            raise
+    
+    def _load_text_file_s3(self, bucket: str, key: str) -> str:
+        """Load text file from S3."""
+        try:
+            response = self.s3_client.get_object(Bucket=bucket, Key=key)
+            return response['Body'].read().decode('utf-8')
+        except Exception as e:
+            self.logger.error(f"Failed to load text file from S3 {bucket}/{key}: {e}")
+            raise
+    
+    def upload_file(self, file_obj: Union[BinaryIO, io.StringIO], data_type: str, filename: str):
+        """Upload a file object to storage.
+        
+        Args:
+            file_obj: File-like object to upload
+            data_type: Type of data (features, models, etc.)
+            filename: Name of the file
+        """
+        if self.use_s3:
+            bucket = self.get_bucket_for_data_type(data_type)
+            s3_path = self.get_s3_path(data_type, filename)
+            self._upload_file_s3(file_obj, bucket, s3_path)
+        else:
+            local_path = self.resolve_path(data_type, filename)
+            self._upload_file_local(file_obj, str(local_path))
+    
+    def _upload_file_local(self, file_obj: Union[BinaryIO, io.StringIO], path: str):
+        """Upload file to local filesystem."""
+        try:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            
+            # Handle both binary and text file objects
+            if isinstance(file_obj, io.StringIO):
+                with open(path, 'w', encoding='utf-8') as f:
+                    f.write(file_obj.getvalue())
+            else:
+                with open(path, 'wb') as f:
+                    file_obj.seek(0)
+                    f.write(file_obj.read())
+        except Exception as e:
+            self.logger.error(f"Failed to upload file to {path}: {e}")
+            raise
+    
+    def _upload_file_s3(self, file_obj: Union[BinaryIO, io.StringIO], bucket: str, key: str):
+        """Upload file to S3."""
+        try:
+            self._ensure_bucket_exists(bucket)
+            
+            # Handle both binary and text file objects
+            if isinstance(file_obj, io.StringIO):
+                self.s3_client.put_object(
+                    Bucket=bucket,
+                    Key=key,
+                    Body=file_obj.getvalue().encode('utf-8')
+                )
+            else:
+                file_obj.seek(0)
+                self.s3_client.put_object(
+                    Bucket=bucket,
+                    Key=key,
+                    Body=file_obj.read()
+                )
+        except Exception as e:
+            self.logger.error(f"Failed to upload file to S3 {bucket}/{key}: {e}")
+            raise
 
 def create_storage_manager(config: Config) -> StorageManager:
     """Factory function to create storage manager.

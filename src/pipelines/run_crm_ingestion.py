@@ -263,7 +263,7 @@ if __name__ == "__main__":
     )
     config = get_config()
     # Run the flow
-    result = crm_data_ingestion_flow(snapshot_month=config.start_snapshot_month)
+    result = crm_data_ingestion_flow(snapshot_month=config.first_snapshot_month)
 
     if result["status"] == "success":
         print("\n✅ Pipeline completed successfully!")

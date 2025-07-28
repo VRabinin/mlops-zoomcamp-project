@@ -43,3 +43,5 @@ storage:
     models: "registry/models"
     experiments: "tracking/experiments"
     prefect_flows: "orchestration/flows"
+    monitoring_results: "data/monitoring/results"
+    monitoring_reports: "data/monitoring/reports"

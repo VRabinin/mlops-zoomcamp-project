@@ -38,6 +38,32 @@ deployments:
   - minio
   work_pool:
     name: default-agent-pool
+- description: Reference data creation pipeline (MinIO S3 storage)
+  entrypoint: src/pipelines/run_reference_data_creation.py:create_reference_data_flow
+  name: reference-data-creation
+  parameters: {}
+  tags:
+  - data
+  - training
+  - crm
+  - ml
+  - s3
+  - minio
+  work_pool:
+    name: default-agent-pool
+- description: Model drift monitoring pipeline (MinIO S3 storage)
+  entrypoint: src/pipelines/run_drift_monitoring.py:drift_monitoring_flow
+  name: model-drift-monitoring
+  parameters: {}
+  tags:
+  - monitoring
+  - drift
+  - crm
+  - mlops
+  - s3
+  - minio
+  work_pool:
+    name: default-agent-pool
 name: crm-mlops-project
 prefect-version: 3.4.10
 pull:
