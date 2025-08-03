@@ -102,7 +102,6 @@ class Config:
     debug: bool = True
     log_level: str = "INFO"
     database_url: str = "postgresql://mlops_user:mlops_password@localhost:5432/mlops"
-    redis_url: str = "redis://localhost:6379"
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert Config to dictionary."""
@@ -138,7 +137,6 @@ class Config:
                 "database_url",
                 "postgresql://mlops_user:mlops_password@localhost:5432/mlops",
             ),
-            redis_url=config_dict.get("redis_url", "redis://localhost:6379"),
         )
 
 
@@ -230,7 +228,6 @@ def get_config(config_path: Optional[str] = None) -> Config:
             "debug",
             "log_level",
             "database_url",
-            "redis_url",
         ]:
             if key in yaml_config:
                 setattr(config, key, yaml_config[key])
@@ -315,6 +312,5 @@ def get_config(config_path: Optional[str] = None) -> Config:
     config.debug = os.getenv("DEBUG", str(config.debug)).lower() == "true"
     config.log_level = os.getenv("LOG_LEVEL", config.log_level)
     config.database_url = os.getenv("DATABASE_URL", config.database_url)
-    config.redis_url = os.getenv("REDIS_URL", config.redis_url)
 
     return config

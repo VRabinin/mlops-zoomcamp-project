@@ -343,7 +343,7 @@ infrastructure/          🎯 CURRENT FOCUS
 - **Feature Engineering**: 23 ML-ready features from 8 original columns
 - **Quality Assurance**: 0.93 validation score with comprehensive checks
 - **Workflow Management**: 11 comprehensive Makefile commands for Prefect operations
-- **Infrastructure**: Docker Compose integration with PostgreSQL, Redis, MinIO
+- **Infrastructure**: Docker Compose integration with PostgreSQL and MinIO
 - **Monitoring**: Real-time status tracking and execution dashboard
 
 **🎯 ML Training & Model Registry:**

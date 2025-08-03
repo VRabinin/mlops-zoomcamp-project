@@ -23,7 +23,6 @@ log_level: "DEBUG"
 
 # Infrastructure
 database_url: "postgresql://staging-mlops-user:password@staging-db:5432/mlops_staging"
-redis_url: "redis://staging-redis:6379"
 
 # Storage configuration
 storage:

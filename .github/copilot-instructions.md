@@ -9,7 +9,7 @@ This is a **CRM Sales Opportunities MLOps Platform** - an end-to-end machine lea
 - **Orchestration**: Prefect 2.14+ for workflow management
 - **Experiment Tracking**: MLflow 2.7+ with PostgreSQL backend
 - **Data Source**: Kaggle CRM dataset (`innocentmfa/crm-sales-opportunities`)
-- **Services**: Docker Compose with PostgreSQL, Redis, MinIO (S3-compatible storage)
+- **Services**: Docker Compose with PostgreSQL, MinIO (S3-compatible storage)
 - **Infrastructure**: Terraform + HashiCorp Nomad for container orchestration
 - **CI/CD**: GitHub Actions with security scanning and multi-stage builds
 

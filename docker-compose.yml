@@ -22,17 +22,6 @@ services:
     networks:
       - mlops-network
 
-  # Redis for caching
-  redis:
-    image: redis:7-alpine
-    container_name: mlops-redis
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - mlops-network
-
   # MLFlow Tracking Server
   mlflow:
     image: ghcr.io/mlflow/mlflow:v3.0.1
@@ -88,7 +77,6 @@ services:
       "
     depends_on:
       - postgres
-      - redis
       - minio
     networks:
       - mlops-network
@@ -219,7 +207,6 @@ services:
       - mlops-network
 
 volumes:
-  redis_data:
   prefect_data:
 
 networks:

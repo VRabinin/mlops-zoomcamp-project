@@ -91,7 +91,6 @@ make application-start
 # This starts:
 # - PostgreSQL (MLflow backend)
 # - MinIO (S3-compatible storage)
-# - Redis (caching)
 # - MLflow Server
 # - Prefect Server
 
@@ -281,7 +280,7 @@ make prefect-stop       # Stop Prefect services
 - **Feature Engineering**: 23 engineered features from 8 original columns
 - **Data Quality**: 0.93 validation score with comprehensive quality checks
 - **Orchestration**: Prefect 3.x workflows with scheduling and monitoring
-- **Infrastructure**: Docker Compose with PostgreSQL, Redis, and MinIO
+- **Infrastructure**: Docker Compose with PostgreSQL and MinIO
 
 ### Available Make Commands
 
@@ -374,7 +373,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 | Prefect UI | http://localhost:4200 | Workflow orchestration dashboard |
 | Architecture Viewer | http://localhost:8080* | C4 model diagrams |
 | PostgreSQL | localhost:5432 | Database (mlops/mlops_user/mlops_password) |
-| Redis | localhost:6379 | Caching and message broker |
 | MinIO | http://localhost:9001 | S3-compatible object storage |
 
 *Port configurable via `STRUCTURIZR_PORT` environment variable
@@ -392,7 +390,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 | **Infrastructure** | Terraform | Latest | Infrastructure as code | 📋 |
 | **Containers** | Docker + Nomad | Latest | Container orchestration | ✅ |
 | **Database** | PostgreSQL | 15 | Structured data storage | ✅ |
-| **Cache** | Redis | 7 | Caching and message broker | ✅ |
 | **Storage** | MinIO/S3 | Latest | Object storage for artifacts | ✅ |
 | **API Framework** | FastAPI | 0.104+ | Model serving API | 📋 |
 

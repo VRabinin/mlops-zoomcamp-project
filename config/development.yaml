@@ -30,7 +30,6 @@ log_level: "INFO"
 
 # Infrastructure
 database_url: "postgresql://localhost:5432/mlops"
-redis_url: "redis://localhost:6379"
 
 # Storage configuration
 storage:

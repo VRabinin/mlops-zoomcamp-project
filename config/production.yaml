@@ -23,7 +23,6 @@ log_level: "INFO"
 
 # Infrastructure
 database_url: "postgresql://prod-mlops-user:password@prod-db.company.com:5432/mlops_prod"
-redis_url: "redis://prod-cache.company.com:6379"
 
 # Storage configuration
 storage:

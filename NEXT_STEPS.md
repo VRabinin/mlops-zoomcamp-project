@@ -384,7 +384,7 @@ Start essential services:
 docker compose up -d
 
 # Individual services
-docker compose up -d postgres redis mlflow minio
+docker compose up -d postgres mlflow minio
 ```
 
 ### 3. Verify Setup
