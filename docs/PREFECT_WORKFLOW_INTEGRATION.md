@@ -11,7 +11,7 @@ The Streamlit application has been successfully refactored to trigger Prefect fl
 Created a comprehensive Prefect client interface that provides:
 
 - **Server Health Checking**: Verify Prefect server connectivity
-- **Deployment Management**: List and manage available deployments  
+- **Deployment Management**: List and manage available deployments
 - **Flow Triggering**: Trigger flows via API or CLI with parameters
 - **Flow Monitoring**: Get flow run status and recent runs
 - **Flow Control**: Cancel running flows
@@ -37,12 +37,12 @@ Added a dedicated "🚀 Workflow Control" tab with three sections:
 
 #### 🚀 Run Pipelines
 - **Data Acquisition**: Download CRM data with snapshot month parameter
-- **Data Ingestion**: Process data with month parameter  
+- **Data Ingestion**: Process data with month parameter
 - **Model Training**: Train models with training month parameter
 - **Reference Data Creation**: Create monitoring baselines with period and sample size
 - **Drift Monitoring**: Run drift analysis with current and reference periods
 
-#### 📊 Flow Status  
+#### 📊 Flow Status
 - **Recent Flow Runs**: Table view of recent executions
 - **Running Flows**: Detailed view of currently executing flows
 - **Flow Control**: Cancel running flows
@@ -58,7 +58,7 @@ Added a dedicated "🚀 Workflow Control" tab with three sections:
 Each flow type now has proper parameter handling:
 
 - **Data Acquisition**: `snapshot_month` (required)
-- **Data Ingestion**: `snapshot_month` (required)  
+- **Data Ingestion**: `snapshot_month` (required)
 - **Model Training**: `current_month` (required)
 - **Reference Data**: `reference_period`, `sample_size`
 - **Drift Monitoring**: `current_month`, `reference_period`
@@ -94,7 +94,7 @@ deployments = manager.get_deployments_sync()
 
 # Trigger data acquisition
 success, flow_run_id, message = manager.trigger_deployment_sync(
-    CRMDeployments.DATA_ACQUISITION, 
+    CRMDeployments.DATA_ACQUISITION,
     {"snapshot_month": "2017-06"}
 )
 
@@ -109,7 +109,7 @@ from src.utils.prefect_client import CRMDeployments
 
 # Available deployment names
 CRMDeployments.DATA_ACQUISITION        # "crm-data-acquisition"
-CRMDeployments.DATA_INGESTION          # "crm-data-ingestion"  
+CRMDeployments.DATA_INGESTION          # "crm-data-ingestion"
 CRMDeployments.MONTHLY_TRAINING        # "monthly-win-probability-training"
 CRMDeployments.REFERENCE_DATA          # "reference-data-creation"
 CRMDeployments.DRIFT_MONITORING        # "model-drift-monitoring"
@@ -157,7 +157,7 @@ def trigger_deployment_sync(self, deployment_name: str, parameters: Dict[str, An
 Comprehensive error handling throughout:
 
 - Server connectivity issues
-- Deployment not found errors  
+- Deployment not found errors
 - Parameter validation errors
 - Flow execution failures
 - Timeout handling
@@ -169,7 +169,7 @@ Comprehensive error handling throughout:
 - Proper dependency handling and scheduling
 - Resource management and scaling
 
-### 2. **Enhanced Monitoring** 
+### 2. **Enhanced Monitoring**
 - Real-time flow status in Prefect UI
 - Historical run tracking
 - Performance metrics and logs
@@ -218,7 +218,7 @@ Comprehensive error handling throughout:
 # Check Prefect status
 make prefect-status-all
 
-# List deployments  
+# List deployments
 make prefect-deployments
 
 # View recent flows

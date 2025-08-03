@@ -3,7 +3,7 @@
 ## 🚀 Getting Started
 
 ### Prerequisites
-1. **MLflow server running**: `make dev-start` 
+1. **MLflow server running**: `make dev-start`
 2. **Trained model registered**: Run the training notebook first
 3. **Python environment activated**: `source .venv/bin/activate`
 
@@ -125,7 +125,7 @@ The app automatically handles MinIO credentials for MLflow artifact access:
 **Environment Variables Set Automatically**:
 ```python
 AWS_ACCESS_KEY_ID=minioadmin
-AWS_SECRET_ACCESS_KEY=minioadmin  
+AWS_SECRET_ACCESS_KEY=minioadmin
 AWS_DEFAULT_REGION=us-east-1
 MLFLOW_S3_ENDPOINT_URL=http://localhost:9000
 ```

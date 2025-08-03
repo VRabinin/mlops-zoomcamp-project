@@ -34,6 +34,7 @@ The platform follows a microservices-based architecture with the following key c
 
 ```
 ├── .github/workflows/      # CI/CD pipelines
+├── .pre-commit-config.yaml # Pre-commit hooks configuration
 ├── architecture/           # Solution architecture documentation
 │   ├── structurizr/       # Structurizr DSL Directory
 │   │   └── workspace.dsl  # C4 model in Structurizr DSL
@@ -56,7 +57,7 @@ The platform follows a microservices-based architecture with the following key c
 │   │   └── schemas/      # Data schema definitions ✅
 │   ├── pipelines/        # Prefect workflow definitions ✅ OPERATIONAL
 │   │   ├── run_crm_ingestion.py     # Monthly CRM processing flow ✅
-│   │   ├── run_crm_acquisition.py   # Enhanced acquisition flow ✅ 
+│   │   ├── run_crm_acquisition.py   # Enhanced acquisition flow ✅
 │   │   └── deploy_crm_pipelines.py  # S3-based deployment ✅
 │   ├── utils/            # Utility modules ✅
 │   │   └── storage.py    # Intelligent S3/local storage manager ✅
@@ -104,7 +105,7 @@ brew install python@3.11
 git clone https://github.com/VRabinin/mlops-zoomcamp-project.git
 cd mlops-zoomcamp-project
 
-# Complete development setup (creates venv, installs deps, creates directories)
+# Complete development setup (creates venv, installs deps, creates directories, installs pre-commit hooks)
 make dev-setup
 
 # Activate virtual environment
@@ -146,7 +147,7 @@ make application-status
 # Option 1: Enhanced data acquisition flow (with simulation features)
 make data-acquisition       # Enhanced CRM acquisition with multi-month simulation
 
-# Option 2: Monthly snapshot processing flow 
+# Option 2: Monthly snapshot processing flow
 make data-pipeline-flow     # Monthly CRM processing with feature engineering
 
 # Or use original standalone pipeline:
@@ -159,7 +160,7 @@ make prefect-deploy-crm     # Deploy both acquisition and ingestion flows
 make prefect-status-all     # Comprehensive status (server, deployments, runs)
 make prefect-ui            # Open Prefect dashboard (http://localhost:4200)
 
-# Manual workflow execution  
+# Manual workflow execution
 make prefect-run-deployment # Trigger deployed flows manually
 
 # MinIO Storage Management
@@ -175,7 +176,7 @@ make prefect-help         # Show all 11 Prefect commands
 
 **✅ Current Status**: The CRM data pipeline is fully operational with dual flow architecture:
 - **Enhanced Acquisition**: Processes 8,800+ CRM records with simulation features
-- **Monthly Processing**: Creates 23 engineered features with 0.93 validation score  
+- **Monthly Processing**: Creates 23 engineered features with 0.93 validation score
 - **Storage**: 7.5MB+ of processed features stored in MinIO S3
 - **Orchestration**: Both flows deployed and running with Prefect 3.x
 
@@ -195,7 +196,7 @@ make streamlit-dev
 
 **📊 Features:**
 - **Single Predictions**: Interactive form for individual opportunity predictions
-- **Pipeline Overview**: Batch analysis of all open opportunities  
+- **Pipeline Overview**: Batch analysis of all open opportunities
 - **Model Insights**: Performance metrics and feature importance
 - **Risk Assessment**: Automated recommendations based on win probability
 
@@ -211,7 +212,7 @@ make streamlit-dev
 ```bash
 # 🔍 Storage Detection Logic:
 # ✅ Local Mode (Direct execution): Uses ./data directories
-# ✅ S3 Mode (Prefect orchestration): Uses MinIO buckets  
+# ✅ S3 Mode (Prefect orchestration): Uses MinIO buckets
 # ✅ Docker Mode (Container execution): Uses S3/MinIO storage
 # ✅ Forced Mode: USE_S3_STORAGE=true environment variable
 
@@ -257,7 +258,7 @@ python notebooks/01_exploratory_data_analysis.py
 make architecture-start
 # Open http://localhost:8080 to view C4 diagrams (port configurable via STRUCTURIZR_PORT)
 
-# Stop the architecture viewer 
+# Stop the architecture viewer
 make architecture-stop
 ```
 
@@ -272,13 +273,39 @@ make architecture-stop
 
 ## 🔧 Development Workflow
 
+### Code Quality & Pre-commit Hooks
+
+**✅ Automated Code Quality**: This project uses pre-commit hooks to ensure consistent code quality:
+
+```bash
+# Pre-commit hooks are automatically installed with `make dev-setup`
+# They run automatically before each commit to:
+# - Format Python code with Black
+# - Sort imports with isort
+# - Run basic linting with flake8
+# - Check YAML/JSON syntax
+# - Remove trailing whitespace
+# - Format Jupyter notebooks
+
+# Manual pre-commit commands:
+make precommit-run          # Run hooks on all files
+make format                 # Format code manually
+make lint                   # Run linting checks
+make precommit-help         # Show all pre-commit options
+
+# The hooks are configured to be developer-friendly:
+# - Permissive linting rules to ease adoption
+# - Automatic code formatting
+# - Gradual quality improvement over time
+```
+
 ### Daily Development Commands
 
 ```bash
 # Start development environment with Prefect orchestration
 make prefect-start      # Start Prefect server + agent (replaces dev-start)
 
-# Alternative: Start individual services  
+# Alternative: Start individual services
 make dev-start          # Start MLFlow + basic services
 make prefect-server     # Start Prefect server only
 make prefect-agent      # Start Prefect agent only
@@ -289,7 +316,7 @@ make prefect-status-all # Enhanced status with Prefect info
 
 # Run data pipeline (multiple options)
 make data-pipeline              # Standalone execution
-make data-pipeline-flow         # Prefect-orchestrated execution  
+make data-pipeline-flow         # Prefect-orchestrated execution
 make prefect-run-deployment     # Manual deployment trigger
 
 # Deploy and manage Prefect workflows
@@ -300,6 +327,7 @@ make prefect-flows             # Show recent flow runs
 # Development and testing
 make test               # Run test suite
 make lint format        # Code quality checks
+make precommit-run      # Run pre-commit hooks manually
 
 # Monitoring and debugging
 make prefect-ui         # Open Prefect dashboard
@@ -314,7 +342,7 @@ make prefect-stop       # Stop Prefect services
 ### Full Development Cycle
 
 1. **Data Ingestion**: ✅ **OPERATIONAL** - Extract CRM data from Kaggle with validation using Prefect 3.x flows
-2. **Feature Engineering**: ✅ **OPERATIONAL** - Transform raw data into 23 ML-ready features  
+2. **Feature Engineering**: ✅ **OPERATIONAL** - Transform raw data into 23 ML-ready features
 3. **Model Training**: 🚧 **IN PROGRESS** - Train and evaluate ML models with Prefect orchestration
 4. **Experiment Tracking**: ✅ **OPERATIONAL** - Log experiments and artifacts with MLFlow (PostgreSQL backend)
 5. **Model Deployment**: 📋 **PLANNED** - Deploy best models to serving infrastructure
@@ -323,7 +351,7 @@ make prefect-stop       # Stop Prefect services
 
 **Pipeline Achievements:**
 - **Data Volume**: Processing 8,800+ CRM records successfully
-- **Feature Engineering**: 23 engineered features from 8 original columns  
+- **Feature Engineering**: 23 engineered features from 8 original columns
 - **Data Quality**: 0.93 validation score with comprehensive quality checks
 - **Orchestration**: Prefect 3.x workflows with scheduling and monitoring
 - **Infrastructure**: Docker Compose with PostgreSQL, Redis, and MinIO
@@ -333,7 +361,7 @@ make prefect-stop       # Stop Prefect services
 | Command | Description | Status |
 |---------|-------------|--------|
 | `make help` | Show all available commands | ✅ |
-| `make dev-setup` | Complete development environment setup | ✅ |
+| `make dev-setup` | Complete development environment setup + pre-commit hooks | ✅ |
 | `make prefect-start` | **Start Prefect server + agent (recommended)** | ✅ |
 | `make dev-start` | Start MLFlow + basic services | ✅ |
 | `make streamlit-app` | **Start Streamlit web application** | ✅ |
@@ -349,6 +377,9 @@ make prefect-stop       # Stop Prefect services
 | `make prefect-help` | **Show all Prefect commands** | ✅ |
 | `make test` | Run test suite | ✅ |
 | `make lint` | Run code quality checks | ✅ |
+| `make format` | Format code with Black and isort | ✅ |
+| `make precommit-run` | Run pre-commit hooks on all files | ✅ |
+| `make precommit-help` | Show all pre-commit commands | ✅ |
 | `make architecture` | View architecture diagrams | ✅ |
 | `make clean` | Clean temporary files | ✅ |
 
@@ -374,6 +405,15 @@ See `make help` for the complete list of 30+ commands.
 
 ## 🤝 Contributing
 
+This project uses pre-commit hooks to maintain code quality. When you run `make dev-setup`, pre-commit hooks are automatically installed and will run before each commit to:
+
+- **Format code**: Black for Python formatting, isort for import sorting
+- **Quality checks**: Flake8 linting with developer-friendly rules
+- **File validation**: YAML/JSON syntax, trailing whitespace removal
+- **Notebook formatting**: Black formatting for Jupyter notebooks
+
+The hooks are configured to be permissive initially to ease adoption. See `docs/PRE_COMMIT_GUIDE.md` for detailed information.
+
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 ## 📄 License
@@ -382,10 +422,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📚 Documentation
 
+### Core Documentation
 - [Architecture Overview](architecture/README.md) - Detailed system architecture
-- [Next Steps Guide](NEXT_STEPS.md) - Development roadmap and priorities  
+- [Next Steps Guide](NEXT_STEPS.md) - Development roadmap and priorities
 - [Development Roadmap](ROADMAP.md) - Complete project timeline
 - [Configuration Guide](.env.template) - Environment setup
+
+### Development Guides
+- [Pre-commit Guide](docs/PRE_COMMIT_GUIDE.md) - Code quality and pre-commit hooks
+- [Prefect Workflow Integration](docs/PREFECT_WORKFLOW_INTEGRATION.md) - Workflow orchestration setup
+- [Streamlit Docker Setup](docs/STREAMLIT_DOCKER_SETUP.md) - Containerized web app deployment
+- [Streamlit Quickstart](docs/STREAMLIT_QUICKSTART.md) - Web application development guide
+
+### Configuration References
+- [Configurable Data Paths](docs/CONFIGURABLE_DATA_PATHS.md) - Data storage configuration
+- [Storage Configuration](docs/STORAGE_CONFIGURATION.md) - S3/MinIO storage setup
+- [Model Drift Monitoring](docs/MODEL_DRIFT_MONITORING.md) - Model performance monitoring
 
 ### Service URLs (Local Development)
 
@@ -493,6 +545,27 @@ open http://localhost:9001
 
 # Clear MinIO data if needed
 make minio-clear-data
+```
+
+**Pre-commit Hook Issues:**
+```bash
+# Check if pre-commit hooks are installed
+ls -la .git/hooks/pre-commit
+
+# Reinstall pre-commit hooks if needed
+make precommit-install
+
+# Run hooks manually to test
+make precommit-run
+
+# Skip hooks temporarily (emergency only)
+git commit --no-verify -m "message"
+
+# Update hook versions
+make precommit-update
+
+# Show all pre-commit options
+make precommit-help
 ```
 
 ### Getting Help
