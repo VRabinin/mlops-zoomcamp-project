@@ -19,7 +19,7 @@ The system follows this configuration hierarchy (higher priority overrides lower
 These variables control the S3/MinIO bucket names used by different services:
 
 ```bash
-# S3/MinIO Bucket Configuration  
+# S3/MinIO Bucket Configuration
 MLFLOW_ARTIFACTS_BUCKET=mlflow-artifacts    # MLflow experiment artifacts
 DATA_LAKE_BUCKET=data-lake                  # Raw, processed, and feature data
 MODEL_ARTIFACTS_BUCKET=model-artifacts      # Trained models and model artifacts
@@ -67,16 +67,16 @@ AWS_DEFAULT_REGION=us-east-1                # S3 region
 ```
 MinIO Buckets:
 ├── mlflow-artifacts/           # MLflow experiments and models
-│   ├── experiments/           
-│   └── models/               
+│   ├── experiments/
+│   └── models/
 ├── data-lake/                 # Primary data storage
 │   ├── raw/                  # Raw datasets (Kaggle, APIs, etc.)
 │   ├── processed/            # Cleaned and validated data
 │   ├── features/             # Feature-engineered datasets
 │   └── prefect-flows/        # Prefect flow artifacts
 └── model-artifacts/          # Model registry and serving
-    ├── models/              
-    └── metadata/            
+    ├── models/
+    └── metadata/
 ```
 
 ### Production Environment Example

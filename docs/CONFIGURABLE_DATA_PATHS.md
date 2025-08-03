@@ -27,7 +27,7 @@ Used when running Python directly (non-containerized):
 data:
   local_paths:
     raw_data_path: "data/raw"              # Raw data downloads
-    processed_data_path: "data/processed"  # Cleaned datasets  
+    processed_data_path: "data/processed"  # Cleaned datasets
     feature_store_path: "data/features"    # Engineered features
 ```
 
@@ -53,7 +53,7 @@ storage:
 ```bash
 # Local filesystem paths (for direct execution)
 RAW_DATA_PATH=custom/local/raw
-PROCESSED_DATA_PATH=custom/local/processed  
+PROCESSED_DATA_PATH=custom/local/processed
 FEATURE_STORE_PATH=custom/local/features
 ```
 
@@ -86,7 +86,7 @@ MODEL_ARTIFACTS_BUCKET=prod-model-registry
 data:
   local_paths:
     raw_data_path: "data/raw"
-    processed_data_path: "data/processed" 
+    processed_data_path: "data/processed"
     feature_store_path: "data/features"
 
 storage:
@@ -199,7 +199,7 @@ storage.save_dataframe_by_type(df, 'raw', 'sales.csv')
 # → S3: saves to s3://data-lake/raw/sales.csv
 
 storage.save_dataframe_by_type(features, 'features', 'crm_features.csv')
-# → Local: saves to data/features/crm_features.csv  
+# → Local: saves to data/features/crm_features.csv
 # → S3: saves to s3://data-lake/features/crm_features.csv
 ```
 
@@ -242,7 +242,7 @@ export DATA_LAKE_BUCKET=staging-data-lake
 
 **Staging → Production:**
 ```bash
-# Production  
+# Production
 export RAW_DATA_PATH=/opt/mlops/data/raw
 export S3_RAW_DATA_PATH=production/ingestion/raw
 export DATA_LAKE_BUCKET=prod-data-lake
@@ -321,8 +321,8 @@ Kaggle API → data/raw/sales.csv → data/processed/clean.csv → data/features
 ### Production Flow
 
 ```
-Kaggle API → s3://prod-data-lake/ingestion/raw/sales.csv 
-           → s3://prod-data-lake/pipeline/processed/clean.csv 
+Kaggle API → s3://prod-data-lake/ingestion/raw/sales.csv
+           → s3://prod-data-lake/pipeline/processed/clean.csv
            → s3://prod-data-lake/ml/features/engineered.csv
 ```
 
@@ -330,7 +330,7 @@ Kaggle API → s3://prod-data-lake/ingestion/raw/sales.csv
 
 ```
 Development:  data/raw → data/features
-Staging:      s3://staging-data-lake/staging/raw → s3://staging-data-lake/staging/features  
+Staging:      s3://staging-data-lake/staging/raw → s3://staging-data-lake/staging/features
 Production:   s3://prod-data-lake/ingestion/raw → s3://prod-data-lake/ml/features
 ```
 
@@ -368,7 +368,7 @@ print("Buckets:", config.storage.buckets)
 ```bash
 # Check environment variables
 echo "RAW_DATA_PATH: $RAW_DATA_PATH"
-echo "S3_RAW_DATA_PATH: $S3_RAW_DATA_PATH"  
+echo "S3_RAW_DATA_PATH: $S3_RAW_DATA_PATH"
 echo "DATA_LAKE_BUCKET: $DATA_LAKE_BUCKET"
 ```
 

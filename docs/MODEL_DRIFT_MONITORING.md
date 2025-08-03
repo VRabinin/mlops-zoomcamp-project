@@ -193,7 +193,7 @@ make prefect-ui                        # Open Prefect UI
 
 ### Evidently Reports
 - **Location**: `monitoring_reports/`
-- **Files**: 
+- **Files**:
   - `drift_report_{ref}_{current}_{timestamp}.html`
   - `performance_report_{ref}_{current}_{timestamp}.html`
 - **Usage**: Detailed analysis and debugging
