@@ -5,7 +5,7 @@ workspace "CRM Sales Opportunities MLOps Platform" "An end-to-end machine learni
         user = person "Business User" "Sales manager or analyst who needs sales opportunity predictions"
         developer = person "ML Engineer/Developer" "Develops, trains, and deploys ML models"
         dataSource = softwareSystem "CRM System" "External CRM system providing sales and opportunities data" "External System"
-        
+
         # Main MLOps Platform
         mlopsplatform = softwareSystem "MLOps Platform" "End-to-end machine learning platform for sales opportunity prediction" {
 
@@ -16,14 +16,14 @@ workspace "CRM Sales Opportunities MLOps Platform" "An end-to-end machine learni
                 visualizationUI = component "Visualization Dashboard" "Charts and metrics for model performance"
                 monitoringUI = component "Monitoring Dashboard" "Real-time model performance monitoring"
             }
-            
+
             # Model Serving Layer
             modelServing = container "Model Serving Service" "Serves trained models for predictions" "Python, MLFlow" {
                 modelAPI = component "Model API" "REST API for model inference"
                 modelRegistry = component "Model Registry" "Manages model versions and metadata"
                 modelLoader = component "Model Loader" "Loads and caches models"
             }
-            
+
             # ML Pipeline Layer
             mlPipeline = container "ML Training Pipeline" "Orchestrates model training and evaluation" "Python, Prefect" {
                 dataIngestion = component "Data Ingestion" "Extracts data from CRM system"
@@ -32,28 +32,28 @@ workspace "CRM Sales Opportunities MLOps Platform" "An end-to-end machine learni
                 modelTraining = component "Model Training" "Trains ML models"
                 modelEvaluation = component "Model Evaluation" "Evaluates model performance"
             }
-            
+
             # Orchestration Layer
             orchestrator = container "Workflow Orchestrator" "Manages and schedules ML workflows" "Prefect" {
                 scheduler = component "Scheduler" "Schedules training and batch prediction jobs"
                 taskExecutor = component "Task Executor" "Executes individual pipeline tasks"
                 workflowMonitor = component "Workflow Monitor" "Monitors pipeline execution"
             }
-            
+
             # Experiment Tracking
             experimentTracking = container "Experiment Tracking" "Tracks ML experiments and model versions" "MLFlow" {
                 experimentLogger = component "Experiment Logger" "Logs model parameters and metrics"
                 artifactStore = component "Artifact Store" "Stores model artifacts and datasets"
                 metricsTracker = component "Metrics Tracker" "Tracks model performance metrics"
             }
-            
+
             # Monitoring Layer
             monitoring = container "Model Monitoring" "Monitors model performance and data drift" "Python, Evidently" {
                 driftDetector = component "Data Drift Detector" "Detects changes in input data distribution"
                 performanceMonitor = component "Performance Monitor" "Monitors model accuracy and performance"
                 alertingSystem = component "Alerting System" "Sends alerts for model degradation"
             }
-            
+
             # Data Storage
             dataStorage = container "Data Storage" "Stores training data, features, and model artifacts" "PostgreSQL, S3" {
                 featureStore = component "Feature Store" "Stores and serves features"
@@ -61,7 +61,7 @@ workspace "CRM Sales Opportunities MLOps Platform" "An end-to-end machine learni
                 modelArtifacts = component "Model Artifacts" "Stored model files and metadata"
             }
         }
-        
+
         # Infrastructure
         infrastructure = softwareSystem "Infrastructure" "Cloud and containerization infrastructure" {
             awsCloud = container "AWS Cloud" "Production cloud infrastructure" "AWS" {
@@ -70,23 +70,23 @@ workspace "CRM Sales Opportunities MLOps Platform" "An end-to-end machine learni
                 rds = component "RDS Database" "Managed database service"
                 alb = component "Application Load Balancer" "Load balancer for web traffic"
             }
-            
+
             localInfra = container "Local Infrastructure" "Development and testing environment" "Docker, MinIO" {
                 dockerServices = component "Docker Services" "Containerized services for local development"
                 localstack = component "LocalStack" "Local AWS services emulation"
             }
-            
+
             containerOrchestration = container "Container Orchestration" "Manages containerized applications" "HashiCorp Nomad" {
                 nomadCluster = component "Nomad Cluster" "Container orchestration cluster"
                 consulService = component "Consul" "Service discovery and configuration"
             }
-            
+
             iacManagement = container "Infrastructure as Code" "Manages infrastructure provisioning" "Terraform" {
                 terraformModules = component "Terraform Modules" "Reusable infrastructure components"
                 stateManagement = component "State Management" "Terraform state management"
             }
         }
-        
+
         # CI/CD System
         cicdSystem = softwareSystem "CI/CD Pipeline" "Continuous integration and deployment" {
             githubActions = container "GitHub Actions" "CI/CD workflows" "GitHub Actions" {
@@ -95,36 +95,36 @@ workspace "CRM Sales Opportunities MLOps Platform" "An end-to-end machine learni
                 testingPipeline = component "Testing Pipeline" "Runs automated tests"
             }
         }
-        
+
         # Relationships - User interactions
         user -> streamlitApp "Uses web interface to make predictions and view insights"
         developer -> streamlitApp "Monitors model performance and experiments"
         developer -> experimentTracking "Tracks experiments and model versions"
         developer -> orchestrator "Manages ML workflows"
-        
+
         # Data flow relationships
         dataSource -> mlPipeline "Provides CRM and sales data"
-        
+
         # Internal system relationships
         streamlitApp -> modelServing "Requests predictions"
         streamlitApp -> monitoring "Displays monitoring dashboards"
-        
+
         mlPipeline -> experimentTracking "Logs experiments and artifacts"
         mlPipeline -> dataStorage "Stores processed data and features"
-        
+
         orchestrator -> mlPipeline "Orchestrates training workflows"
         orchestrator -> modelServing "Triggers model deployment"
-        
+
         modelServing -> experimentTracking "Retrieves trained models"
         modelServing -> dataStorage "Accesses features for inference"
-        
+
         monitoring -> modelServing "Monitors model predictions"
         monitoring -> dataStorage "Analyzes prediction data"
-        
+
         # Infrastructure relationships
         mlopsplatform -> infrastructure "Deployed on"
         cicdSystem -> infrastructure "Deploys to"
-        
+
         # CI/CD relationships
         githubActions -> mlopsplatform "Builds and deploys"
         githubActions -> infrastructure "Provisions infrastructure"

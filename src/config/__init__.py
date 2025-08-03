@@ -4,20 +4,20 @@ from .config import (
     Config,
     DataPathConfig,
     MLflowConfig,
-    PrefectConfig,
     MonitoringConfig,
+    PrefectConfig,
     StorageConfig,
     get_config,
-    load_config_from_yaml
+    load_config_from_yaml,
 )
 
 __all__ = [
-    'Config',
-    'DataConfig', 
-    'MLflowConfig',
-    'PrefectConfig',
-    'MonitoringConfig',
-    'StorageConfig',
-    'get_config',
-    'load_config_from_yaml'
+    "Config",
+    "DataConfig",
+    "MLflowConfig",
+    "PrefectConfig",
+    "MonitoringConfig",
+    "StorageConfig",
+    "get_config",
+    "load_config_from_yaml",
 ]

@@ -7,10 +7,10 @@ services:
       - "${STRUCTURIZR_PORT:-8080}:8080"
     volumes:
       - ./structurizr/workspace.dsl:/usr/local/structurizr/workspace.dsl:ro
-#    environment:
-#      - STRUCTURIZR_WORKSPACE_FILENAME=workspace.dsl
+    #    environment:
+    #      - STRUCTURIZR_WORKSPACE_FILENAME=workspace.dsl
     restart: unless-stopped
-    
+
   # PlantUML server for diagram rendering (optional)
   plantuml:
     image: plantuml/plantuml-server:latest

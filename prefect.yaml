@@ -1,92 +1,93 @@
 deployments:
-- description: CRM sales opportunities data acquisition pipeline (MinIO S3 storage)
-  entrypoint: src/pipelines/run_crm_acquisition.py:crm_data_acquisition_flow
-  name: crm-data-acquisition
-  parameters: {}
-  tags:
-  - data
-  - acquisition
-  - crm
-  - etl
-  - s3
-  - minio
-  work_pool:
-    name: default-agent-pool
-- description: CRM sales opportunities data ingestion pipeline (MinIO S3 storage)
-  entrypoint: src/pipelines/run_crm_ingestion.py:crm_data_ingestion_flow
-  name: crm-data-ingestion
-  parameters: {}
-  tags:
-  - data
-  - ingestion
-  - crm
-  - etl
-  - s3
-  - minio
-  work_pool:
-    name: default-agent-pool
-- description: Monthly win probability training pipeline (MinIO S3 storage)
-  entrypoint: src/pipelines/run_monthly_win_training.py:monthly_win_probability_training_flow
-  name: monthly-win-probability-training
-  parameters: {}
-  tags:
-  - data
-  - training
-  - crm
-  - ml
-  - s3
-  - minio
-  work_pool:
-    name: default-agent-pool
-- description: Reference data creation pipeline (MinIO S3 storage)
-  entrypoint: src/pipelines/run_reference_data_creation.py:create_reference_data_flow
-  name: reference-data-creation
-  parameters: {}
-  tags:
-  - data
-  - training
-  - crm
-  - ml
-  - s3
-  - minio
-  work_pool:
-    name: default-agent-pool
-- description: Model drift monitoring pipeline (MinIO S3 storage)
-  entrypoint: src/pipelines/run_drift_monitoring.py:drift_monitoring_flow
-  name: model-drift-monitoring
-  parameters: {}
-  tags:
-  - monitoring
-  - drift
-  - crm
-  - mlops
-  - s3
-  - minio
-  work_pool:
-    name: default-agent-pool
-- description: CRM data cleanup pipeline - removes processed files while preserving
-    Kaggle source data
-  entrypoint: src/pipelines/run_data_cleanup.py:crm_data_cleanup_flow
-  name: crm-data-cleanup
-  parameters: {}
-  tags:
-  - cleanup
-  - maintenance
-  - crm
-  - data
-  - s3
-  - minio
-  work_pool:
-    name: default-agent-pool
+  - description: CRM sales opportunities data acquisition pipeline (MinIO S3 storage)
+    entrypoint: src/pipelines/run_crm_acquisition.py:crm_data_acquisition_flow
+    name: crm-data-acquisition
+    parameters: {}
+    tags:
+      - data
+      - acquisition
+      - crm
+      - etl
+      - s3
+      - minio
+    work_pool:
+      name: default-agent-pool
+  - description: CRM sales opportunities data ingestion pipeline (MinIO S3 storage)
+    entrypoint: src/pipelines/run_crm_ingestion.py:crm_data_ingestion_flow
+    name: crm-data-ingestion
+    parameters: {}
+    tags:
+      - data
+      - ingestion
+      - crm
+      - etl
+      - s3
+      - minio
+    work_pool:
+      name: default-agent-pool
+  - description: Monthly win probability training pipeline (MinIO S3 storage)
+    entrypoint: src/pipelines/run_monthly_win_training.py:monthly_win_probability_training_flow
+    name: monthly-win-probability-training
+    parameters: {}
+    tags:
+      - data
+      - training
+      - crm
+      - ml
+      - s3
+      - minio
+    work_pool:
+      name: default-agent-pool
+  - description: Reference data creation pipeline (MinIO S3 storage)
+    entrypoint: src/pipelines/run_reference_data_creation.py:create_reference_data_flow
+    name: reference-data-creation
+    parameters: {}
+    tags:
+      - data
+      - training
+      - crm
+      - ml
+      - s3
+      - minio
+    work_pool:
+      name: default-agent-pool
+  - description: Model drift monitoring pipeline (MinIO S3 storage)
+    entrypoint: src/pipelines/run_drift_monitoring.py:drift_monitoring_flow
+    name: model-drift-monitoring
+    parameters: {}
+    tags:
+      - monitoring
+      - drift
+      - crm
+      - mlops
+      - s3
+      - minio
+    work_pool:
+      name: default-agent-pool
+  - description:
+      CRM data cleanup pipeline - removes processed files while preserving
+      Kaggle source data
+    entrypoint: src/pipelines/run_data_cleanup.py:crm_data_cleanup_flow
+    name: crm-data-cleanup
+    parameters: {}
+    tags:
+      - cleanup
+      - maintenance
+      - crm
+      - data
+      - s3
+      - minio
+    work_pool:
+      name: default-agent-pool
 name: crm-mlops-project
 prefect-version: 3.4.10
 pull:
-- prefect_aws.deployments.steps.pull_from_s3:
-    bucket: data-lake
-    client_parameters:
-      endpoint_url: http://minio:9000
-      region_name: us-east-1
-    credentials:
-      aws_access_key_id: minioadmin
-      aws_secret_access_key: minioadmin
-    folder: prefect-flows/
+  - prefect_aws.deployments.steps.pull_from_s3:
+      bucket: data-lake
+      client_parameters:
+        endpoint_url: http://minio:9000
+        region_name: us-east-1
+      credentials:
+        aws_access_key_id: minioadmin
+        aws_secret_access_key: minioadmin
+      folder: prefect-flows/

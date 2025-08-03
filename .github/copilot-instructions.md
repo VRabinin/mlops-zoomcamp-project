@@ -7,7 +7,7 @@ This is a **CRM Sales Opportunities MLOps Platform** - an end-to-end machine lea
 
 ### Core Technology Stack
 - **Orchestration**: Prefect 2.14+ for workflow management
-- **Experiment Tracking**: MLflow 2.7+ with PostgreSQL backend  
+- **Experiment Tracking**: MLflow 2.7+ with PostgreSQL backend
 - **Data Source**: Kaggle CRM dataset (`innocentmfa/crm-sales-opportunities`)
 - **Services**: Docker Compose with PostgreSQL, Redis, MinIO (S3-compatible storage)
 - **Infrastructure**: Terraform + HashiCorp Nomad for container orchestration
@@ -59,7 +59,7 @@ make architecture-start         # View C4 diagrams at localhost:8080
 - **App Config**: `config/development.yaml` for structured settings
 - **Database**: PostgreSQL with MLflow backend store
 - **Artifact Storage**: MinIO S3 (dev) → AWS S3 (prod)
-- **Multi-Environment Pattern**: 
+- **Multi-Environment Pattern**:
   - Base config in `development.yaml`
   - Override with environment variables for staging/prod
   - Use `get_config()` function for runtime config access
@@ -68,10 +68,10 @@ make architecture-start         # View C4 diagrams at localhost:8080
 ### Prefect Workflow Patterns
 - **Flow Definition**: Use `@flow` decorator with descriptive names (`crm_data_ingestion_flow`)
 - **Task Structure**: Break flows into reusable `@task` functions with error handling
-- **Deployment Pattern**: 
+- **Deployment Pattern**:
   ```python
   # 1. Define flow in src/pipelines/
-  # 2. Deploy with: make prefect-deploy-crm  
+  # 2. Deploy with: make prefect-deploy-crm
   # 3. Run with agent: make prefect-agent
   ```
 - **Work Pools**: Use `default-agent-pool` for local development
@@ -146,7 +146,7 @@ make minio-ui                   # http://localhost:9001
 ```bash
 # MinIO management
 make minio-buckets              # List all buckets
-make minio-list-data            # List data-lake bucket contents  
+make minio-list-data            # List data-lake bucket contents
 make minio-ui                   # Open MinIO web UI
 make minio-status               # Check MinIO container status
 
@@ -212,6 +212,6 @@ When implementing new features, follow the established patterns in tests/, respe
 
 ## 📚 **Related Documentation**
 - **README.md**: Quick start, troubleshooting, and service URLs
-- **NEXT_STEPS.md**: Current sprint tasks and immediate action items  
+- **NEXT_STEPS.md**: Current sprint tasks and immediate action items
 - **ROADMAP.md**: Long-term project phases and business context
 - **architecture/README.md**: Detailed technical architecture and data flows

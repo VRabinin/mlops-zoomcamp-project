@@ -27,9 +27,9 @@ redis_url: "redis://prod-cache.company.com:6379"
 
 # Storage configuration
 storage:
-  endpoint_url: null  # Use AWS S3 default
-  access_key: null    # Use IAM roles
-  secret_key: null    # Use IAM roles
+  endpoint_url: null # Use AWS S3 default
+  access_key: null # Use IAM roles
+  secret_key: null # Use IAM roles
   region: "us-east-1"
   buckets:
     mlflow_artifacts: "prod-mlflow-artifacts"
