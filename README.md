@@ -30,50 +30,18 @@ The platform follows a microservices-based architecture with the following key c
 - **Local Development**: Docker + MinIO
 - **Production Deployment**: AWS Cloud
 
-## 📁 Project Structure
+## 📁 Project Overview
 
-```
-├── .github/workflows/      # CI/CD pipelines
-├── .pre-commit-config.yaml # Pre-commit hooks configuration
-├── architecture/           # Solution architecture documentation
-│   ├── structurizr/       # Structurizr DSL Directory
-│   │   └── workspace.dsl  # C4 model in Structurizr DSL
-│   ├── README.md          # Architecture documentation
-│   └── docker-compose.yml # Structurizr local setup
-├── config/                # Configuration files
-│   └── development.yaml   # Development environment config
-├── data/                  # Data directories
-│   ├── raw/              # Raw data storage
-│   ├── processed/        # Processed data
-│   └── features/         # Feature store
-├── notebooks/             # Jupyter notebooks for exploration
-├── src/                   # Source code
-│   ├── data/             # Data pipeline modules
-│   │   ├── ingestion/    # Data ingestion (Kaggle CRM dataset) ✅ OPERATIONAL
-│   │   │   ├── crm_ingestion.py     # Monthly snapshot processing ✅
-│   │   │   └── crm_acquisition.py   # Enhanced data acquisition ✅
-│   │   ├── validation/   # Data quality validation ✅ OPERATIONAL (0.93 score)
-│   │   ├── preprocessing/ # Feature engineering ✅ OPERATIONAL (23 features)
-│   │   └── schemas/      # Data schema definitions ✅
-│   ├── pipelines/        # Prefect workflow definitions ✅ OPERATIONAL
-│   │   ├── run_crm_ingestion.py     # Monthly CRM processing flow ✅
-│   │   ├── run_crm_acquisition.py   # Enhanced acquisition flow ✅
-│   │   └── deploy_crm_pipelines.py  # S3-based deployment ✅
-│   ├── utils/            # Utility modules ✅
-│   │   └── storage.py    # Intelligent S3/local storage manager ✅
-│   └── config/           # Configuration management ✅
-│   │   ├── preprocessing/ # Feature engineering ✅ OPERATIONAL
-│   │   └── schemas/      # Data schema definitions ✅ OPERATIONAL
-│   ├── pipelines/        # Prefect workflow definitions ✅ OPERATIONAL
-│   │   ├── run_crm_pipeline.py     # CRM data pipeline flow
-│   │   └── deploy_crm_pipeline.py  # Flow deployment scripts
-│   └── config/           # Configuration management ✅ OPERATIONAL
-├── tests/                 # Test suites
-├── docker-compose.yml     # Local development services
-├── Makefile              # Development commands
-├── requirements.txt      # Python dependencies
-└── .env.template         # Environment configuration template
-```
+This MLOps platform consists of several key components:
+
+- **`src/`** - Complete ML pipeline with data processing, training, and monitoring
+- **`src_app/`** - Streamlit web application for predictions and monitoring
+- **`architecture/`** - System architecture documentation and C4 diagrams
+- **`config/`** - Multi-environment configuration management
+- **`tests/`** - Comprehensive test suite with pytest
+- **`docs/`** - Detailed documentation and guides
+
+📋 **For detailed project structure and component descriptions, see [Architecture Documentation](architecture/README.md#-project-structure)**
 
 ## 🚀 Quick Start
 
