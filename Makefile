@@ -78,7 +78,7 @@ data-preprocess: ## Process raw data into features
 	@echo "Processing data..."
 	python -m src.data.preprocessing.feature_engineering
 
-data-pipeline: data-download data-validate data-process ## Run complete data pipeline (excluding acquisition)
+data-pipeline: data-acquisition data-ingestion data-validation data-preprocess ## Run complete data pipeline (excluding acquisition)
 	@echo "Running complete data pipeline..."
 	python -m src.data.pipeline.run_pipeline
 

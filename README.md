@@ -77,181 +77,121 @@ The platform follows a microservices-based architecture with the following key c
 
 ## 🚀 Quick Start
 
+Get the MLOps platform running locally with Docker in under 10 minutes.
+
 ### Prerequisites
 
-- **Python 3.11**: Required for optimal compatibility with MLOps tools
-- **Docker & Docker Compose**: For local development services (v2+ with compose plugin)
-- **Git**: For version control
-- **Kaggle Account**: For accessing the CRM dataset
+- **Docker & Docker Compose**: v2+ with compose plugin
+- **Python 3.11**: Required for optimal compatibility
+- **Git**: For repository cloning
+- **Kaggle Account**: For CRM dataset access
 
-### 1. Installation
+### Step 1: Clone and Setup
 
-**Check Python Version:**
-```bash
-python --version  # Should be 3.11.x
-```
-
-**Install Python 3.11 (if needed):**
-```bash
-# macOS with Homebrew
-brew install python@3.11
-
-# Or download from https://www.python.org/downloads/
-```
-
-**Clone and Setup:**
 ```bash
 # Clone the repository
 git clone https://github.com/VRabinin/mlops-zoomcamp-project.git
 cd mlops-zoomcamp-project
 
-# Complete development setup (creates venv, installs deps, creates directories, installs pre-commit hooks)
+# Complete environment setup (Python venv + dependencies + directories)
 make dev-setup
 
 # Activate virtual environment
 source .venv/bin/activate
 ```
 
-### 2. Configure Environment
+### Step 2: Configure Kaggle API
 
-**Set up Kaggle API (required for dataset):**
 ```bash
-# 1. Get your API credentials from https://www.kaggle.com/account
-# 2. Download kaggle.json
-# 3. Place credentials:
+# Get API credentials from https://www.kaggle.com/account
+# Download kaggle.json and place it:
 mkdir -p ~/.kaggle
 mv ~/Downloads/kaggle.json ~/.kaggle/
 chmod 600 ~/.kaggle/kaggle.json
+
+# Create environment file from template
+cp .env.template .env
+# Edit .env with your Kaggle username and API key if needed
 ```
 
-**Configure environment variables:**
-```bash
-# Edit .env file with your Kaggle credentials and other settings
-```
-
-### 3. Start Development Services
+### Step 3: Start Docker Services
 
 ```bash
-# Start all local infrastructure (PostgreSQL, MLFlow, Redis, etc.) on Docker
+# Start all MLOps infrastructure services
 make application-start
 
-# Verify services are running
+# This starts:
+# - PostgreSQL (MLflow backend)
+# - MinIO (S3-compatible storage)
+# - Redis (caching)
+# - MLflow Server
+# - Prefect Server
+
+# Verify all services are running
 make application-status
 ```
 
-### 4. Run Data Pipeline
+### Step 4: Run the Data Pipeline
 
 ```bash
-# 🎯 FULLY OPERATIONAL: Enhanced CRM data pipeline with dual flow architecture
+# Start Prefect agent for workflow orchestration
+make prefect-agent
 
-# Option 1: Enhanced data acquisition flow (with simulation features)
-make data-acquisition       # Enhanced CRM acquisition with multi-month simulation
+# Run the complete CRM data pipeline
+make data-pipeline-flow
 
-# Option 2: Monthly snapshot processing flow
-make data-pipeline-flow     # Monthly CRM processing with feature engineering
-
-# Or use original standalone pipeline:
-make data-pipeline          # Standalone execution (stores in ./data directories)
-
-# Deploy flows to Prefect server for orchestration
-make prefect-deploy-crm     # Deploy both acquisition and ingestion flows
-
-# Monitor workflow execution
-make prefect-status-all     # Comprehensive status (server, deployments, runs)
-make prefect-ui            # Open Prefect dashboard (http://localhost:4200)
-
-# Manual workflow execution
-make prefect-run-deployment # Trigger deployed flows manually
-
-# MinIO Storage Management
-make minio-ui              # MinIO web console (http://localhost:9001)
-make minio-list-data       # View 7.5MB+ of processed CRM data
-make minio-buckets         # List all storage buckets
-
-# Additional Prefect commands
-make prefect-deployments   # List all deployments
-make prefect-flows        # Show recent flow runs
-make prefect-help         # Show all 11 Prefect commands
+# This will:
+# 1. Download CRM data from Kaggle (8,800+ records)
+# 2. Validate data quality (0.93 score expected)
+# 3. Engineer 23 ML features
+# 4. Store results in MinIO S3 storage
 ```
 
-**✅ Current Status**: The CRM data pipeline is fully operational with dual flow architecture:
-- **Enhanced Acquisition**: Processes 8,800+ CRM records with simulation features
-- **Monthly Processing**: Creates 23 engineered features with 0.93 validation score
-- **Storage**: 7.5MB+ of processed features stored in MinIO S3
-- **Orchestration**: Both flows deployed and running with Prefect 3.x
+### Step 5: Access the Platform
 
-### 5. Launch Web Application
+Open these services in your browser:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **Prefect UI** | http://localhost:4200 | Workflow orchestration dashboard |
+| **MLflow UI** | http://localhost:5000 | Experiment tracking & model registry |
+| **MinIO Console** | http://localhost:9001 | S3 storage management |
+| **Streamlit App** | http://localhost:8501 | ML predictions interface |
+
+**Default Credentials:**
+- MinIO: `minioadmin` / `minioadmin`
+- PostgreSQL: `mlops_user` / `mlops_password`
+
+### Step 6: Explore the Features
 
 ```bash
-# 🎯 INTERACTIVE PREDICTION INTERFACE: Streamlit web application
+# View processed data in MinIO
+make minio-ui
+# Navigate to 'data-lake' bucket to see processed CRM features
 
-# Start the web application (requires trained model)
+# Check pipeline status
+make prefect-status-all
+
+# Launch the prediction web app
 make streamlit-app
+# Visit http://localhost:8501 for interactive ML predictions
 
-# Or for development with auto-reload
-make streamlit-dev
-
-# The app will be available at: http://localhost:8501
-```
-
-**📊 Features:**
-- **Single Predictions**: Interactive form for individual opportunity predictions
-- **Pipeline Overview**: Batch analysis of all open opportunities
-- **Model Insights**: Performance metrics and feature importance
-- **Risk Assessment**: Automated recommendations based on win probability
-
-**Prerequisites:**
-- MLflow server running (`make dev-start`)
-- Trained model registered in MLflow (`monthly_win_probability_model`)
-- CRM features dataset available
-
-### 6. Storage Configuration
-
-**🗃️ Intelligent Storage Management**: The pipeline automatically selects the appropriate storage backend based on execution environment:
-
-```bash
-# 🔍 Storage Detection Logic:
-# ✅ Local Mode (Direct execution): Uses ./data directories
-# ✅ S3 Mode (Prefect orchestration): Uses MinIO buckets
-# ✅ Docker Mode (Container execution): Uses S3/MinIO storage
-# ✅ Forced Mode: USE_S3_STORAGE=true environment variable
-
-# Local filesystem storage (development)
-python src/pipelines/run_crm_pipeline.py
-
-# S3/MinIO storage (orchestrated/production)
-make prefect-run-deployment  # Uses S3 automatically
-
-# Force S3 storage for testing
-USE_S3_STORAGE=true python src/pipelines/run_crm_pipeline.py
-```
-
-**📦 Storage Locations:**
-- **Local Mode**: `./data/raw/`, `./data/processed/`, `./data/features/`
-- **S3 Mode**: `s3://data-lake/data/raw/`, `s3://data-lake/data/processed/`, `s3://data-lake/data/features/`
-- **MinIO Web UI**: http://localhost:9001 (minioadmin/minioadmin)
-
-**🎯 Benefits:**
-- **Seamless Transition**: Same code works locally and in production
-- **Development Efficiency**: Local files for quick iteration
-- **Production Ready**: S3-compatible storage for scalability
-- **Container Compatible**: Automatic S3 mode in Docker environments
-
-### 7. Explore and Train
-
-```bash
-# Start MLFlow UI (experiment tracking)
+# Start MLFlow UI for experiment tracking
 make mlflow-ui
-# Open http://localhost:5000
-
-# Run initial data exploration
-python notebooks/01_exploratory_data_analysis.py
-
-# Train baseline models (coming soon)
-# make train
+# Visit http://localhost:5000 for model registry and experiments
 ```
 
-### 7. View Architecture
+### That's It! 🎉
+
+You now have a complete MLOps platform running locally with:
+- ✅ **Data Pipeline**: Automated CRM data processing
+- ✅ **Experiment Tracking**: MLflow with PostgreSQL backend
+- ✅ **Workflow Orchestration**: Prefect for pipeline automation
+- ✅ **Object Storage**: MinIO S3-compatible storage
+- ✅ **Web Interface**: Streamlit app for ML predictions
+- ✅ **Monitoring**: Service health and pipeline status
+
+### Step 7: View Architecture
 
 ```bash
 # Start architecture viewer
@@ -260,6 +200,25 @@ make architecture-start
 
 # Stop the architecture viewer
 make architecture-stop
+```
+
+### Next Steps
+
+```bash
+# Explore the data
+make jupyter-start  # Launch Jupyter notebooks
+
+# Train ML models
+make model-train    # Train win probability models
+
+# Deploy flows for scheduling
+make prefect-deploy-crm  # Deploy to Prefect server
+
+# Monitor data quality
+make monitoring-start    # Launch Evidently AI monitoring
+
+# View comprehensive help
+make help  # See all 30+ available commands
 ```
 
 ## 📊 Key Features
