@@ -4,8 +4,11 @@
 
 # Default target
 help: ## Show this help message
-	@echo "MLOps Platform Commands:"
-	@echo "========================"
+	@echo "🚀 MLOps Platform Commands"
+	@echo "============================"
+	@echo "📊 Current Implementation: CRM Sales Opportunities (Phases 1-6 Complete)"
+	@echo "🔧 Stack: Prefect 3.x + MLflow + PostgreSQL + MinIO + Evidently AI"
+	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # Setup and Installation
@@ -79,7 +82,7 @@ data-preprocess: ## Process raw data into features
 	python -m src.data.preprocessing.feature_engineering
 
 data-pipeline: data-acquisition data-ingestion data-validation data-preprocess ## Run complete data pipeline (excluding acquisition)
-	@echo "Running complete data pipeline..."
+	@echo "✅ Complete data pipeline executed successfully!"
 	python -m src.data.pipeline.run_pipeline
 
 # MinIO S3 Management
@@ -196,22 +199,22 @@ prefect-ui: ## Open Prefect UI in browser
 	@open http://localhost:4200
 
 prefect-help: ## Show all Prefect commands
-	@echo "=== Available Prefect Commands ==="
-	@echo "prefect-deploy-crm:              Deploy CRM flow with S3 storage"
-	@echo "prefect-deploy-monthly-training: Deploy monthly win probability training flow"
-	@echo "prefect-run-ingestion:           Run CRM ingestion flow directly"
+	@echo "=== 🔄 Prefect Workflows (Operational) ==="
+	@echo "prefect-deploy:                  Deploy all CRM flows with S3 storage"
+	@echo "prefect-run-acquisition:         Run CRM data acquisition flow"
+	@echo "prefect-run-ingestion:           Run CRM data ingestion flow"
 	@echo "prefect-run-monthly-training:    Run monthly win probability training flow"
 	@echo "prefect-run-reference-creation:  Create reference data for monitoring"
 	@echo "prefect-run-drift-monitoring:    Run drift monitoring analysis"
 	@echo "prefect-deployments:             List all deployments"
 	@echo "prefect-flows:                   List recent flow runs"
+	@echo "prefect-status-all:              Show comprehensive Prefect status"
 	@echo "prefect-ui:                      Open Prefect UI in browser"
-	@echo "prefect-help:                    Show this help message"
 	@echo ""
-	@echo "=== Model Training ==="
+	@echo "=== 🤖 ML Training (Complete) ==="
 	@echo "train-monthly-win:               Train monthly win probability model locally"
 	@echo ""
-	@echo "=== MinIO S3 Storage ==="
+	@echo "=== 📦 MinIO S3 Storage (Active) ==="
 	@echo "minio-ui:                        Open MinIO web console"
 	@echo "minio-buckets:                   List all MinIO buckets"
 	@echo "minio-list-data:                 List data-lake bucket contents"
@@ -219,7 +222,7 @@ prefect-help: ## Show all Prefect commands
 	@echo "minio-status:                    Check MinIO service status"
 
 prefect-status-all: ## Show comprehensive Prefect status
-	@echo "=== Prefect Status ==="
+	@echo "=== 🔄 Prefect Orchestration Status ==="
 	@echo "Server Health:"
 	@curl -s http://localhost:4200/api/health 2>/dev/null && echo " ✅ Server is running" || echo " ❌ Server is not responding"
 	@echo "\nWork Pools:"
@@ -269,7 +272,7 @@ format-check: ## Check code formatting
 	isort --check-only src/
 
 precommit-help: ## Show all pre-commit commands
-	@echo "=== Pre-commit Commands ==="
+	@echo "=== 🛡️  Code Quality & Security (Active) ==="
 	@echo "precommit-install:           Install pre-commit hooks"
 	@echo "precommit-run:               Run pre-commit hooks on all files"
 	@echo "precommit-update:            Update pre-commit hook versions"
@@ -279,7 +282,7 @@ precommit-help: ## Show all pre-commit commands
 	@echo "lint:                        Run linting checks"
 	@echo "security-check:              Run security vulnerability scans"
 	@echo ""
-	@echo "=== Pre-commit Hook Details ==="
+	@echo "=== ⚙️  Pre-commit Hook Details ==="
 	@echo "The following hooks are configured:"
 	@echo "- trailing-whitespace:       Remove trailing whitespace"
 	@echo "- end-of-file-fixer:         Ensure files end with newline"
@@ -321,7 +324,7 @@ docs-serve: ## Serve documentation locally
 
 # Docker
 application-start: ## Run application in Docker
-	@echo "Running application in Docker..."
+	@echo "🚀 Starting MLOps Platform (PostgreSQL + MLflow + Prefect + MinIO)..."
 	docker compose up -d
 
 application-stop: ## Stop Docker containers
@@ -331,7 +334,7 @@ application-stop: ## Stop Docker containers
 application-restart: application-stop application-start ## Restart Docker containers
 
 application-status: ## Check application status in Docker
-	@echo "Checking application status in Docker..."
+	@echo "📊 Checking MLOps Platform service status..."
 	docker compose ps
 
 # Infrastructure
@@ -349,15 +352,20 @@ infra-destroy: ## Destroy Terraform infrastructure
 
 # Local Development
 dev-setup: setup install-venv create-dirs env-file precommit-install ## Complete development setup
-	@echo "🚀 MLOps development environment setup complete!"
+	@echo "🚀 MLOps Platform development environment setup complete!"
 	@echo ""
-	@echo "🎉 Development environment ready!"
-	@echo "Pre-commit hooks installed and ready!"
-	@echo "Next steps:"
+	@echo "✅ Current Implementation: CRM Sales Opportunities (Phases 1-6 Operational)"
+	@echo "   📊 Data Pipeline (Kaggle CRM → Feature Engineering)"
+	@echo "   🤖 ML Training (Monthly Win Probability Models)"
+	@echo "   🌐 Streamlit Web App (Interactive Predictions)"
+	@echo "   📈 Model Monitoring (Evidently AI Drift Detection)"
+	@echo ""
+	@echo "🎯 Next steps:"
 	@echo "1. Activate virtual environment: source .venv/bin/activate"
 	@echo "2. Update .env file with your Kaggle credentials"
-	@echo "3. Start services: docker compose up -d"
-	@echo "4. Run data pipeline: make data-pipeline"
+	@echo "3. Start services: make application-start"
+	@echo "4. Run complete pipeline: make prefect-run"
+	@echo "5. Launch Streamlit app: make streamlit-app"
 
 dev-start: mlflow-server ## Start development services
 	@echo "Starting Prefect services..."
@@ -430,12 +438,20 @@ streamlit-rebuild: ## Rebuild and restart Streamlit container
 
 
 status: ## Show project status
-	@echo "MLOps Platform Status"
-	@echo "===================="
-	@echo "Python version: $(shell python --version)"
-	@echo "MLFlow tracking URI: $(shell echo $${MLFLOW_TRACKING_URI:-http://localhost:5000})"
-	@echo "Data directory size: $(shell du -sh data/ 2>/dev/null || echo 'No data directory')"
-	@echo "Models directory size: $(shell du -sh models/ 2>/dev/null || echo 'No models directory')"
-	@echo "Streamlit Container Status:"
-	@docker compose ps streamlit
-	@curl -s -o /dev/null -w "Streamlit AppHTTP Status: %{http_code}" http://localhost:8501/_stcore/health || echo "Not accessible"
+	@echo "🚀 MLOps Platform Status"
+	@echo "========================"
+	@echo "📊 Current Implementation: CRM Sales Opportunities (Phases 1-6 Operational)"
+	@echo "🐍 Python version: $(shell python --version)"
+	@echo "🔬 MLFlow tracking URI: $(shell echo $${MLFLOW_TRACKING_URI:-http://localhost:5005})"
+	@echo "📁 Data directory size: $(shell du -sh data/ 2>/dev/null || echo 'No data directory')"
+	@echo "🤖 Models directory size: $(shell du -sh models/ 2>/dev/null || echo 'No models directory')"
+	@echo ""
+	@echo "🌐 Streamlit Web App Status:"
+	@docker compose ps streamlit 2>/dev/null || echo "   Container not running"
+	@curl -s -o /dev/null -w "   Health Check: %{http_code}" http://localhost:8501/_stcore/health 2>/dev/null || echo "   Not accessible"
+	@echo ""
+	@echo "🔗 Service URLs:"
+	@echo "   • Streamlit App: http://localhost:8501"
+	@echo "   • MLflow UI: http://localhost:5005"
+	@echo "   • Prefect UI: http://localhost:4200"
+	@echo "   • MinIO Console: http://localhost:9001"
