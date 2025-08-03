@@ -176,6 +176,8 @@ prefect-run-drift-monitoring: ## Run drift monitoring flow (requires current_mon
 	export PREFECT_API_URL=http://localhost:4200/api && \
 	PYTHONPATH=$${PYTHONPATH}:$(shell pwd) .venv/bin/python src/pipelines/run_drift_monitoring.py $$current_month
 
+prefect-run: prefect-run-acquisition prefect-run-ingestion prefect-run-monthly-training prefect-run-reference-creation prefect-run-drift-monitoring ## Run all Prefect flows in sequence
+
 prefect-deploy: ## Deploy CRM ingestion flow with S3 storage
 	@echo "Deploying CRM ingestion flow with S3 storage..."
 	@export PREFECT_API_URL=http://localhost:4200/api && \
@@ -184,14 +186,6 @@ prefect-deploy: ## Deploy CRM ingestion flow with S3 storage
 prefect-deployments: ## List all Prefect deployments
 	@echo "Listing Prefect deployments..."
 	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment ls
-
-#prefect-run-acquisition-deployed: ## Run the CRM acquisition deployment manually
-#	@echo "Running CRM acquisition deployment manually..."
-#	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment run crm_data_acquisition_flow/crm-data-acquisition
-
-#prefect-run-ingestion-deployed: ## Run the CRM deployment manually
-#	@echo "Running CRM deployment manually..."
-#	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect deployment run crm_data_ingestion_flow/crm-data-ingestion
 
 prefect-flows: ## List all flow runs
 	@echo "Listing Prefect flow runs..."

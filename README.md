@@ -111,7 +111,7 @@ chmod 600 ~/.kaggle/kaggle.json
 
 # Create environment file from template
 cp .env.template .env
-# Edit .env with your Kaggle username and API key if needed
+# Edit .env with your Kaggle username and API key and adjust other variables if needed
 ```
 
 ### Step 3: Start Docker Services
@@ -134,11 +134,11 @@ make application-status
 ### Step 4: Run the Data Pipeline
 
 ```bash
-# Start Prefect agent for workflow orchestration
-make prefect-agent
+#Deploy all pipeline parts to Prefect Server
+make prefect-deploy
 
 # Run the complete CRM data pipeline
-make data-pipeline-flow
+make prefect-run
 
 # This will:
 # 1. Download CRM data from Kaggle (8,800+ records)
