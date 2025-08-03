@@ -128,17 +128,25 @@ def get_current_period():
                     # st.success(f"✅ Data loaded from {'MinIO' if storage_manager.use_s3 else 'local'}: {filename}")
                     return current_period
                 else:
-                    st.error("No feature files found in the storage")
-                    current_period = None
-                # break
+                    return None
             except Exception as storage_error:
                 st.error(
                     f"Storage manager failed to load current period: {storage_error}"
                 )
+                return None
         else:
-            st.error(f"Config is not available - cannot load data")
+            # Fallback to local file check when config not available
+            data_path = Path(__file__).parent.parent / "data" / "features"
+            if data_path.exists():
+                feature_files = list(data_path.glob("crm_features_*.csv"))
+                if feature_files:
+                    latest_file = sorted(feature_files)[-1]
+                    current_period = latest_file.name.split("_")[-1].replace(".csv", "")
+                    return current_period
+            return None
     except Exception as storage_error:
         st.error(f"Storage manager failed to load current period: {storage_error}")
+        return None
 
 
 @st.cache_data
@@ -1410,6 +1418,14 @@ def main():
 
     # Header
     st.title("🎯 CRM Monthly Win Probability Predictor")
+
+    # Display current period
+    current_period = get_current_period()
+    if current_period:
+        st.info(f"📅 **Current Period:** {current_period}")
+    else:
+        st.warning("⚠️ **Current Period:** Not available - please run data pipeline")
+
     st.markdown("---")
 
     # Create tabs for navigation

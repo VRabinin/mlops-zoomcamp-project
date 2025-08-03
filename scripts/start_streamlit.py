@@ -15,7 +15,7 @@ def main():
 
     # Get project root directory
     project_root = Path(__file__).parent.parent
-    app_path = project_root / "src" / "streamlit_app" / "app.py"
+    app_path = project_root / "src_app" / "app.py"
 
     if not app_path.exists():
         print(f"Error: App file not found at {app_path}")
