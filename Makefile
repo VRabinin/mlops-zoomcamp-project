@@ -236,6 +236,29 @@ prefect-status-all: ## Show comprehensive Prefect status
 	@export PREFECT_API_URL=http://localhost:4200/api && .venv/bin/prefect flow-run ls --limit 5 2>/dev/null || echo "❌ Could not list flow runs"
 
 # Code Quality
+precommit-install: ## Install pre-commit hooks
+	@echo "Installing pre-commit hooks..."
+	@if [ ! -d ".venv" ]; then \
+		echo "❌ Virtual environment not found. Run 'make setup' first."; \
+		exit 1; \
+	fi
+	.venv/bin/pre-commit install
+	.venv/bin/pre-commit install --hook-type pre-push
+	@echo "✅ Pre-commit hooks installed!"
+
+precommit-run: ## Run pre-commit hooks on all files
+	@echo "Running pre-commit hooks on all files..."
+	.venv/bin/pre-commit run --all-files
+
+precommit-update: ## Update pre-commit hook versions
+	@echo "Updating pre-commit hooks..."
+	.venv/bin/pre-commit autoupdate
+
+precommit-uninstall: ## Uninstall pre-commit hooks
+	@echo "Uninstalling pre-commit hooks..."
+	.venv/bin/pre-commit uninstall
+	.venv/bin/pre-commit uninstall --hook-type pre-push
+
 lint: ## Run linting
 	@echo "Running linting..."
 	flake8 src/
@@ -250,6 +273,39 @@ format-check: ## Check code formatting
 	@echo "Checking code formatting..."
 	black --check src/
 	isort --check-only src/
+
+precommit-help: ## Show all pre-commit commands
+	@echo "=== Pre-commit Commands ==="
+	@echo "precommit-install:           Install pre-commit hooks"
+	@echo "precommit-run:               Run pre-commit hooks on all files"
+	@echo "precommit-update:            Update pre-commit hook versions"
+	@echo "precommit-uninstall:         Uninstall pre-commit hooks"
+	@echo "format:                      Format code with black and isort"
+	@echo "format-check:                Check code formatting without fixing"
+	@echo "lint:                        Run linting checks"
+	@echo "security-check:              Run security vulnerability scans"
+	@echo ""
+	@echo "=== Pre-commit Hook Details ==="
+	@echo "The following hooks are configured:"
+	@echo "- trailing-whitespace:       Remove trailing whitespace"
+	@echo "- end-of-file-fixer:         Ensure files end with newline"
+	@echo "- check-yaml:                Validate YAML syntax"
+	@echo "- check-json:                Validate JSON syntax"
+	@echo "- check-merge-conflict:      Detect merge conflict markers"
+	@echo "- check-added-large-files:   Prevent large file commits (>10MB)"
+	@echo "- mixed-line-ending:         Fix line endings to LF"
+	@echo "- black:                     Python code formatting"
+	@echo "- isort:                     Python import sorting"
+	@echo "- flake8:                    Python linting (permissive)"
+	@echo "- nbqa-black:                Format Jupyter notebooks"
+	@echo ""
+	@echo "See docs/PRE_COMMIT_GUIDE.md for detailed documentation"
+
+security-check: ## Run security checks
+	@echo "Running security checks..."
+	bandit -r src/ -f json -o bandit-report.json || true
+	safety check --json --output safety-report.json || true
+	@echo "Security reports generated: bandit-report.json, safety-report.json"
 
 # Testing
 test: ## Run tests
@@ -298,10 +354,11 @@ infra-destroy: ## Destroy Terraform infrastructure
 	cd infrastructure && terraform destroy
 
 # Local Development
-dev-setup: setup install-venv create-dirs env-file ## Complete development setup
+dev-setup: setup install-venv create-dirs env-file precommit-install ## Complete development setup
 	@echo "🚀 MLOps development environment setup complete!"
 	@echo ""
 	@echo "🎉 Development environment ready!"
+	@echo "Pre-commit hooks installed and ready!"
 	@echo "Next steps:"
 	@echo "1. Activate virtual environment: source .venv/bin/activate"
 	@echo "2. Update .env file with your Kaggle credentials"
@@ -340,9 +397,9 @@ clean-models: ## Clean trained models
 clean-all: clean clean-data clean-models ## Clean everything
 
 # CI/CD
-ci-test: install-venv test lint ## Run CI tests
+ci-test: install-venv test lint security-check ## Run CI tests
 
-ci-build: clean install-venv test lint docker-build ## Complete CI build
+ci-build: clean install-venv test lint security-check docker-build ## Complete CI build
 
 # Quick Commands
 quick-start: dev-setup data-pipeline train ## Quick start for new developers
