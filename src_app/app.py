@@ -44,6 +44,27 @@ except ImportError:
 
 warnings.filterwarnings("ignore")
 
+
+def safe_convert_to_string(value):
+    """Convert any UUID objects to strings to avoid PyArrow conversion errors."""
+    import uuid
+
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    return value
+
+
+def safe_dataframe_display(data_dict):
+    """Safely convert dictionary data for DataFrame display, handling UUID objects."""
+    safe_data = {}
+    for key, value in data_dict.items():
+        if isinstance(value, list):
+            safe_data[key] = [safe_convert_to_string(item) for item in value]
+        else:
+            safe_data[key] = safe_convert_to_string(value)
+    return safe_data
+
+
 # Configuration - supports both local and Docker environments
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5005")
 MINIO_ENDPOINT = os.getenv("MLFLOW_S3_ENDPOINT_URL", "http://localhost:9000")
@@ -147,6 +168,95 @@ def get_current_period():
     except Exception as storage_error:
         st.error(f"Storage manager failed to load current period: {storage_error}")
         return None
+
+
+def get_next_period(current_period=None):
+    """
+    Calculate the next period based on the current period.
+    Expected format: YYYY-MM (e.g., '2017-05')
+    Returns the next month in the same format.
+    """
+    if current_period is None:
+        current_period = get_current_period()
+
+    if not current_period:
+        return None
+
+    try:
+        # Parse the period string (expected format: YYYY-MM)
+        year, month = map(int, current_period.split("-"))
+
+        # Validate month range
+        if not (1 <= month <= 12):
+            raise ValueError(f"Invalid month: {month}")
+
+        # Calculate next month
+        if month == 12:
+            next_year = year + 1
+            next_month = 1
+        else:
+            next_year = year
+            next_month = month + 1
+
+        # Format as YYYY-MM
+        return f"{next_year:04d}-{next_month:02d}"
+
+    except (ValueError, AttributeError) as e:
+        st.error(f"Error parsing period '{current_period}': {e}")
+        return None
+
+
+def validate_period_format(period):
+    """
+    Validate that a period string is in the expected YYYY-MM format.
+    Returns (is_valid, error_message)
+    """
+    if not period:
+        return False, "Period is empty or None"
+
+    try:
+        parts = period.split("-")
+        if len(parts) != 2:
+            return False, f"Expected format YYYY-MM, got '{period}'"
+
+        year, month = map(int, parts)
+
+        if year < 1900 or year > 2100:
+            return False, f"Year {year} seems invalid"
+
+        if not (1 <= month <= 12):
+            return False, f"Month {month} must be between 1-12"
+
+        return True, "Valid format"
+
+    except (ValueError, AttributeError) as e:
+        return False, f"Invalid format '{period}': {e}"
+
+
+def get_period_range(start_period, num_periods=12):
+    """
+    Generate a range of periods starting from start_period.
+    Useful for creating simulation sequences.
+    """
+    if not start_period:
+        return []
+
+    is_valid, error_msg = validate_period_format(start_period)
+    if not is_valid:
+        st.error(f"Invalid start period: {error_msg}")
+        return []
+
+    periods = [start_period]
+    current = start_period
+
+    for _ in range(num_periods - 1):
+        next_period = get_next_period(current)
+        if not next_period:
+            break
+        periods.append(next_period)
+        current = next_period
+
+    return periods
 
 
 @st.cache_data
@@ -857,9 +967,20 @@ def show_simulation_controls():
                 else:
                     st.warning("❌ Cleanup Pipeline is not deployed")
             st.subheader("📊 Move to the next period")
-            if st.button("Load Simulation Data"):
-                # Placeholder for loading simulation data
-                st.info("Simulation data loaded successfully!")
+            if st.button("Simulate Period Change"):
+                next_period = get_next_period(get_current_period())
+                if next_period:
+                    parameters = {"snapshot_month": next_period}
+                    trigger_flow(
+                        prefect_manager,
+                        CRMDeployments.DATA_INGESTION,
+                        "Period Change Simulation",
+                        parameters,
+                    )
+                    # Refresh data cache
+                    st.cache_data.clear()
+                else:
+                    st.error("❌ Could not determine next period")
         with tab2:
             show_flow_status(prefect_manager)
         with tab3:
@@ -1125,21 +1246,18 @@ def show_flow_status(prefect_manager: "PrefectFlowManager"):
         # Create a dataframe for better display
         runs_data = []
         for run in flow_runs:
-            runs_data.append(
-                {
-                    "Flow": run["flow_name"],
-                    "Status": format_flow_run_state(
-                        run["state_type"], run["state_name"]
-                    ),
-                    "Started": run["start_time"].strftime("%m-%d %H:%M")
-                    if run["start_time"]
-                    else "N/A",
-                    "Duration": format_duration(run["total_run_time"])
-                    if run["total_run_time"]
-                    else "N/A",
-                    "Run ID": run["id"][:8] + "...",
-                }
-            )
+            run_data = {
+                "Flow": safe_convert_to_string(run["flow_name"]),
+                "Status": format_flow_run_state(run["state_type"], run["state_name"]),
+                "Started": run["start_time"].strftime("%m-%d %H:%M")
+                if run["start_time"]
+                else "N/A",
+                "Duration": format_duration(run["total_run_time"])
+                if run["total_run_time"]
+                else "N/A",
+                "Run ID": str(run["id"])[:8] + "...",
+            }
+            runs_data.append(run_data)
 
         runs_df = pd.DataFrame(runs_data)
         st.dataframe(runs_df, use_container_width=True)
@@ -1422,9 +1540,19 @@ def main():
     # Display current period
     current_period = get_current_period()
     if current_period:
-        st.info(f"📅 **Current Period:** {current_period}")
+        next_period = get_next_period(current_period)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"📅 **Current Data Period:** {current_period}")
+        with col2:
+            if next_period:
+                st.info(f"➡️ **Next Period:** {next_period}")
+            else:
+                st.warning("⚠️ **Next Period:** Unable to calculate")
     else:
-        st.warning("⚠️ **Current Period:** Not available - please run data pipeline")
+        st.warning(
+            "⚠️ **Current Data Period:** Not available - please run data pipeline"
+        )
 
     st.markdown("---")
 

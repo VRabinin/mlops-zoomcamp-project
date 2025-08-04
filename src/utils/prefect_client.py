@@ -283,25 +283,39 @@ class PrefectFlowManager:
         try:
             async with PrefectClient(api=self.api_url) as client:
                 flow_runs = await client.read_flow_runs(
-                    limit=limit, sort=FlowRunSort.CREATED_DESC
+                    limit=limit, sort=FlowRunSort.START_TIME_DESC
                 )
 
-                return [
-                    {
-                        "id": str(run.id),
-                        "name": run.name,
-                        "flow_name": run.flow_name,
-                        "state_name": run.state_name,
-                        "state_type": run.state_type.value if run.state_type else None,
-                        "start_time": run.start_time,
-                        "end_time": run.end_time,
-                        "total_run_time": run.total_run_time,
-                        "created": run.created,
-                        "parameters": run.parameters,
-                        "tags": run.tags,
-                    }
-                    for run in flow_runs
-                ]
+                # Build result list with proper flow names
+                result = []
+                for run in flow_runs:
+                    # Get flow name from flow_id
+                    try:
+                        flow = await client.read_flow(run.flow_id)
+                        flow_name = flow.name
+                    except Exception:
+                        # Fallback to flow_id as string if flow lookup fails
+                        flow_name = str(run.flow_id)
+
+                    result.append(
+                        {
+                            "id": str(run.id),
+                            "name": run.name,
+                            "flow_name": flow_name,
+                            "state_name": run.state_name,
+                            "state_type": run.state_type.value
+                            if run.state_type
+                            else None,
+                            "start_time": run.start_time,
+                            "end_time": run.end_time,
+                            "total_run_time": run.total_run_time,
+                            "created": run.created,
+                            "parameters": run.parameters,
+                            "tags": run.tags,
+                        }
+                    )
+
+                return result
 
         except Exception as e:
             logger.error(f"Error fetching recent flow runs: {e}")
