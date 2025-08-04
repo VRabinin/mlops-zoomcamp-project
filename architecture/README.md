@@ -1,5 +1,7 @@
 # MLOps Platform Architecture
 
+> **Note**: This document describes the target architecture for the MLOps platform. Many components described here are planned for future implementation. See the main README.md for current implementation status.
+
 This directory contains the solution architecture for the CRM Sales Opportunities MLOps Platform using C4 modeling notation and Structurizr DSL.
 
 ## 📁 Project Structure

@@ -22,9 +22,9 @@ The platform follows a microservices-based architecture with the following key c
 - **Model Serving**: MLFlow
 - **Storage**: MinIO S3-compatible storage (✅ **OPERATIONAL** - 7.5MB+ CRM features stored)
 - **Monitoring**: Evidently AI
-- **CI/CD**: GitHub Actions
-- **Infrastructure as Code**: Terraform
-- **Container Orchestration**: HashiCorp Nomad
+- **CI/CD**: GitHub Actions *(Not implemented yet)*
+- **Infrastructure as Code**: Terraform *(Not implemented yet)*
+- **Container Orchestration**: HashiCorp Nomad *(Not implemented yet)*
 
 ### Environment Support
 - **Local Development**: Docker + MinIO
@@ -273,7 +273,7 @@ make prefect-stop       # Stop Prefect services
 4. **Experiment Tracking**: ✅ **OPERATIONAL** - Log experiments and artifacts with MLFlow (PostgreSQL backend)
 5. **Model Deployment**: 📋 **PLANNED** - Deploy best models to serving infrastructure
 6. **Monitoring**: 📋 **PLANNED** - Track model performance with Evidently AI
-7. **CI/CD**: ✅ **OPERATIONAL** - Automated testing and deployment with GitHub Actions
+7. **CI/CD**: 📋 **NOT IMPLEMENTED** - Automated testing and deployment with GitHub Actions
 
 **Pipeline Achievements:**
 - **Data Volume**: Processing 8,800+ CRM records successfully
@@ -386,14 +386,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 | **ML Tracking** | MLFlow | 2.7+ | Experiment and model management | ✅ |
 | **Orchestration** | Prefect | 3.x | Workflow automation | ✅ |
 | **Monitoring** | Evidently AI | 0.4+ | Model and data monitoring | 📋 |
-| **CI/CD** | GitHub Actions | - | Automation pipeline | ✅ |
+| **CI/CD** | GitHub Actions | - | Automation pipeline | 📋 |
 | **Infrastructure** | Terraform | Latest | Infrastructure as code | 📋 |
-| **Containers** | Docker + Nomad | Latest | Container orchestration | ✅ |
+| **Containers** | Docker + Nomad | Latest | Container orchestration | 📋 |
 | **Database** | PostgreSQL | 15 | Structured data storage | ✅ |
 | **Storage** | MinIO/S3 | Latest | Object storage for artifacts | ✅ |
 | **API Framework** | FastAPI | 0.104+ | Model serving API | 📋 |
 
-**Legend**: ✅ Operational | 🚧 In Progress | 📋 Planned
+**Legend**: ✅ Operational | 🚧 In Progress | 📋 Planned/Not Implemented
 
 ## 🚨 Troubleshooting
 

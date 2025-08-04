@@ -6,16 +6,16 @@ This is a **CRM Sales Opportunities MLOps Platform** - an end-to-end machine lea
 ## 🏗️ Architecture & Components
 
 ### Core Technology Stack
-- **Orchestration**: Prefect 2.14+ for workflow management
+- **Orchestration**: Prefect 3.4+ for workflow management
 - **Experiment Tracking**: MLflow 2.7+ with PostgreSQL backend
 - **Data Source**: Kaggle CRM dataset (`innocentmfa/crm-sales-opportunities`)
 - **Services**: Docker Compose with PostgreSQL, MinIO (S3-compatible storage)
-- **Infrastructure**: Terraform + HashiCorp Nomad for container orchestration
-- **CI/CD**: GitHub Actions with security scanning and multi-stage builds
+- **Infrastructure**: Terraform + HashiCorp Nomad for container orchestration (Not implemented yet)
+- **CI/CD**: GitHub Actions with security scanning and multi-stage builds (Not implemented yet)
 
 ### Project Structure (Early Stage)
 ```
-├── .github/workflows/          # CI/CD with pytest, flake8, bandit, safety
+├── .github/workflows/          # CI/CD with pytest, flake8, bandit, safety (Not implemented yet)
 ├── architecture/               # C4 model diagrams (Structurizr DSL)
 ├── config/development.yaml     # YAML-based configuration management
 ├── docker-compose.yml          # Multi-service local development stack
@@ -201,7 +201,7 @@ s3:
 - **Kaggle API**: Dataset ingestion with credential management
 - **MLflow**: Backend store on PostgreSQL, artifacts on S3/MinIO
 - **Prefect**: API-based deployment with work pool management
-- **GitHub Actions**: Multi-stage pipeline with security and build phases
+- **GitHub Actions**: Multi-stage pipeline with security and build phases (Not implemented yet)
 
 ### Cross-Component Communication
 - **Prefect ↔ MLflow**: Experiment logging during orchestrated runs
