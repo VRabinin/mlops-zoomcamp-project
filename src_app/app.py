@@ -1543,16 +1543,14 @@ def main():
         next_period = get_next_period(current_period)
         col1, col2 = st.columns(2)
         with col1:
-            st.info(f"📅 **Current Data Period:** {current_period}")
+            st.info(f"📅 **Current Period:** {current_period}")
         with col2:
             if next_period:
-                st.info(f"➡️ **Next Period:** {next_period}")
+                st.info(f"➡️ **forecasted Period:** {next_period}")
             else:
                 st.warning("⚠️ **Next Period:** Unable to calculate")
     else:
-        st.warning(
-            "⚠️ **Current Data Period:** Not available - please run data pipeline"
-        )
+        st.warning("⚠️ **Current Period:** Not available - please run data pipeline")
 
     st.markdown("---")
 
