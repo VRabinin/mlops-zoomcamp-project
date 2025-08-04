@@ -957,7 +957,14 @@ def show_simulation_controls():
             )
             if st.button("Reset to Start Period"):
                 if CRMDeployments.DATA_CLEANUP in deployment_names:
-                    parameters = {"dry_run": True, "file_categories": ["all"]}
+                    parameters = {
+                        "dry_run": False,
+                        "include_processed": True,
+                        "include_features": True,
+                        "include_monitoring": True,
+                        "include_predictions": True,
+                        "include_temp": True,
+                    }
                     trigger_flow(
                         prefect_manager,
                         CRMDeployments.DATA_CLEANUP,
@@ -966,6 +973,16 @@ def show_simulation_controls():
                     )
                 else:
                     st.warning("❌ Cleanup Pipeline is not deployed")
+                if CRMDeployments.DATA_INGESTION in deployment_names:
+                    parameters = {"snapshot_month": period}
+                    trigger_flow(
+                        prefect_manager,
+                        CRMDeployments.DATA_INGESTION,
+                        "Data Ingestion",
+                        parameters,
+                    )
+                else:
+                    st.warning("❌ Ingestion Pipeline is not deployed")
             st.subheader("📊 Move to the next period")
             if st.button("Simulate Period Change"):
                 next_period = get_next_period(get_current_period())
