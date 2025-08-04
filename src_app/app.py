@@ -56,6 +56,8 @@ def safe_convert_to_string(value):
 
 def safe_dataframe_display(data_dict):
     """Safely convert dictionary data for DataFrame display, handling UUID objects."""
+    import uuid
+
     safe_data = {}
     for key, value in data_dict.items():
         if isinstance(value, list):
@@ -63,6 +65,26 @@ def safe_dataframe_display(data_dict):
         else:
             safe_data[key] = safe_convert_to_string(value)
     return safe_data
+
+
+def safe_dataframe_from_list(data_list):
+    """Safely convert list of dictionaries to DataFrame, handling UUID objects."""
+    import uuid
+
+    import pandas as pd
+
+    if not data_list:
+        return pd.DataFrame()
+
+    # Convert each row safely
+    safe_data = []
+    for row in data_list:
+        safe_row = {}
+        for key, value in row.items():
+            safe_row[key] = safe_convert_to_string(value)
+        safe_data.append(safe_row)
+
+    return pd.DataFrame(safe_data)
 
 
 # Configuration - supports both local and Docker environments
@@ -1276,7 +1298,8 @@ def show_flow_status(prefect_manager: "PrefectFlowManager"):
             }
             runs_data.append(run_data)
 
-        runs_df = pd.DataFrame(runs_data)
+        # Use safe DataFrame creation
+        runs_df = safe_dataframe_from_list(runs_data)
         st.dataframe(runs_df, use_container_width=True)
 
         # Show detailed view for running flows

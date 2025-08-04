@@ -225,6 +225,77 @@ make precommit-help         # Show all pre-commit options
 # - Gradual quality improvement over time
 ```
 
+#### 📋 Detailed Pre-commit Hook Breakdown
+
+The `.pre-commit-config.yaml` configures the following hooks that run automatically before each git commit:
+
+**🔧 Built-in Quality Checks:**
+- **`trailing-whitespace`**: Removes unnecessary whitespace at line endings
+- **`end-of-file-fixer`**: Ensures files end with a newline character
+- **`check-yaml`**: Validates YAML file syntax (excludes Structurizr DSL files)
+- **`check-json`**: Validates JSON file syntax
+- **`check-merge-conflict`**: Detects merge conflict markers
+- **`check-added-large-files`**: Prevents committing files larger than 10MB
+- **`mixed-line-ending`**: Standardizes line endings to LF (Unix style)
+
+**🐍 Python Code Formatting:**
+- **`black`** (v23.12.1): Formats Python code with 88-character line length
+  - Ensures consistent code style across the project
+  - Automatically fixes formatting issues
+  - Language version: Python 3.11
+
+**📦 Import Organization:**
+- **`isort`** (v5.13.2): Sorts and organizes Python imports
+  - Uses Black-compatible profile
+  - Maintains 88-character line length consistency
+  - Groups imports by standard library, third-party, and local
+
+**🔍 Code Quality Checks:**
+- **`flake8`** (v7.0.0): Basic Python linting with developer-friendly rules
+  - Max line length: 120 characters
+  - Max complexity: 30 (permissive for development)
+  - Ignores common style conflicts: E203, W503, E501, F401, F841, F811, F541, E722, E712, E101, E266, E265, W191
+  - Excludes: .venv, .git, __pycache__, build, dist, *.egg-info, notebooks
+
+**📓 Jupyter Notebook Support:**
+- **`nbqa-black`** (v1.7.1): Formats code cells in Jupyter notebooks
+  - Applies Black formatting to notebook code cells
+  - Maintains consistency between .py files and notebooks
+
+**🚫 Global Exclusions:**
+The hooks skip these directories/files:
+- `.venv/` - Virtual environment
+- `.git/` - Git metadata
+- `__pycache__/` - Python cache
+- `app_data/` - Application data
+- `data/`, `models/`, `logs/`, `reports/`, `artifacts/` - Data directories
+- `.env*` - Environment files
+- `bandit-report.json`, `safety-report.json` - Security reports
+
+**⚙️ Configuration:**
+- **Fail Fast**: `false` - Runs all hooks even if one fails
+- **Default Stage**: `pre-commit` - Runs before commits
+- **Minimum Version**: 3.0.0
+
+**🛠️ Manual Hook Management:**
+```bash
+# Install hooks manually
+pre-commit install
+
+# Run hooks on all files
+pre-commit run --all-files
+
+# Run specific hook
+pre-commit run black
+pre-commit run flake8
+
+# Update hooks to latest versions
+pre-commit autoupdate
+
+# Skip hooks for a commit (emergency use)
+git commit --no-verify -m "Emergency commit"
+```
+
 ### Daily Development Commands
 
 ```bash
